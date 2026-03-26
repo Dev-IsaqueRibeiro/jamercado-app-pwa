@@ -1,0 +1,357 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="stylesheet" href="./CSS/styles.css" />
+    <link rel="manifest" href="./manifest.json" />
+    <meta name="theme-color" content="#16a34a" />
+
+    <!-- IMPORT GOOGLE FONTS -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,100..1000;1,9..40,100..1000&family=Lato:ital,wght@0,100;0,300;0,400;0,700;0,900;1,100;1,300;1,400;1,700;1,900&display=swap"
+      rel="stylesheet"
+    />
+
+    <!-- IMPORT MAP → PARA O NAVEGADOR ENCONTRAR O FIREBASE -->
+    <script type="importmap">
+      {
+        "imports": {
+          "firebase/app": "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js",
+          "firebase/auth": "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js",
+          "firebase/analytics": "https://www.gstatic.com/firebasejs/10.8.0/firebase-analytics.js"
+        }
+      }
+    </script>
+
+    <title>JáMercado</title>
+
+    <link
+      rel="shortcut icon"
+      href="IMAGES/Logo-JaMercado-mobile.ico"
+      type="image/x-icon"
+    />
+    <link
+      rel="icon"
+      href="IMAGES/Logo-JaMercado-mobile.ico"
+      type="image/x-icon"
+    />
+  </head>
+  <body>
+    <!-- ADICIONA O FILTRO DE LÁPIS (EFEITO DE PINTADO À LAPIS) -->
+    <!-- <svg style="position: absolute; width: 0; height: 0;" width="0" height="0">
+    <defs>
+      <filter id="pencil-texture">
+        <feTurbulence type="fractalNoise" baseFrequency="0.8" numOctaves="3" result="noise" />
+        <feDisplacementMap in="SourceGraphic" in2="noise" scale="2" xChannelSelector="R" yChannelSelector="G" />
+      </filter>
+    </defs> -->
+
+    <header>
+      <img src="./IMAGES/Logo-JaMercado.png" alt="Logo JáMercado" />
+
+      <div id="userContainer">
+        <button id="loginBtn" class="login-btn">
+          <span class="btnLogin-text"><b>Login</b></span>
+        </button>
+
+        <div id="userInfo" style="display: none"></div>
+      </div>
+    </header>
+
+    <main>
+      <div class="add-product">
+        <input
+          id="productInput"
+          type="text"
+          placeholder="Adicionar produto..."
+        />
+        <button id="addBtn" type="button">+</button>
+      </div>
+
+      <div class="actions">
+        <button id="saveListBtn" class="save">💾 Salvar</button>
+        <button id="clearBtn" type="button" class="clear">🗑️ Limpar</button>
+        <button id="viewListsBtn">📜 Listas</button>
+      </div>
+
+      <div id="emptyState" class="empty">
+        <img src="./IMAGES/empty-bag.svg" alt="Lista vazia" />
+        <p>Sua lista está vazia</p>
+        <span>Adicione produtos para começar</span>
+      </div>
+
+      <ul id="productList"></ul>
+
+      <!-- QUARKZETTA -->
+      <div class="tech-container">
+        <div class="tech-content-wrapper">
+          <div class="data-bit bit-green"></div>
+          <div class="data-bit bit-red"></div>
+          <div class="data-bit bit-blue"></div>
+          <div class="data-bit bit-white"></div>
+          <div class="data-bit bit-black"></div>
+          <div class="data-bit bit-orange"></div>
+
+          <div class="images-magnet-box">
+            <a
+              href="https://wa.me/5547991719319?text=Ol%C3%A1%2C%20Isaque!%0AEu%20venho%20atrav%C3%A9s%20do%20seu%20aplicativo%20J%C3%A1Mercado!"
+              target="_blank"
+            >
+              <img
+                src="./IMAGES/Logo-QuarkZetta.png"
+                alt="Logo"
+                class="logo-img animacao-ima-logo"
+              />
+            </a>
+
+            <a
+              href="https://wa.me/5547991719319?text=Ol%C3%A1%2C%20Isaque!%0AEu%20venho%20atrav%C3%A9s%20do%20seu%20aplicativo%20J%C3%A1Mercado!"
+              target="_blank"
+            >
+              <img
+                src="./IMAGES/Nome-QuarkZetta.png"
+                alt="Nome"
+                class="nome-img animacao-ima-nome"
+              />
+            </a>
+          </div>
+        </div>
+      </div>
+
+      <!-- ANÚNCIOS -->
+      <div class="ad-bottom-area">
+        <div class="card card-dev-club">
+          <i class="icon-redes"></i>
+          <div id="card-dev-club">
+            <img src="./IMAGES/devClub.Logo3.png" alt="logo DevClub" />
+          </div>
+          <h4>💻 Aprenda a Programar 💻</h4>
+          <p class="devClub-text">
+            Com a Melhor Escola de Programação do Brasil.
+          </p>
+          <p class="devClub">
+            <strong id="dev">&lt Dev</strong><strong id="code">Club &gt</strong>
+          </p>
+          <a
+            href="https://landing-page-devclub2026.vercel.app/"
+            target="_blank"
+            class="btn-3d-dev-club"
+            >Inscrever-se</a
+          >
+        </div>
+      </div>
+
+      <!-- NOTE CREDITS FOOTER -->
+      <div class="note-container-footer">
+        <h2 class="note-title-footer">JáMercado</h2>
+        <p class="note-copyright-footer">
+          &copy; 2026 QUARKZETTA | ENGINEERED BY ISAQUE RIBEIRO
+        </p>
+      </div>
+    </main>
+
+    <!-- MODAL DE LOGIN / CADASTRO -->
+    <div id="loginModal" class="modal hidden">
+      <div class="modal-content-google login-modal-size">
+        <h2>Acessar Conta</h2>
+
+        <button id="googleLoginBtn" class="google-btn-modal">
+          <img
+            src="https://fonts.gstatic.com/s/i/productlogos/googleg/v6/24px.svg"
+            alt="Google"
+            class="google-logo"
+          />
+          <span>Entrar com Google</span>
+        </button>
+
+        <div class="divider">ou usar seu e-mail</div>
+
+        <input
+          type="email"
+          id="emailInput"
+          placeholder="Seu e-mail (Hotmail, Outlook...)"
+        />
+
+        <!-- <input type="text" id="nameInput" placeholder="Seu nome ou apelido" /> -->
+        <input type="password" id="passwordInput" placeholder="Sua senha" />
+
+        <div class="modal-actions-column">
+          <button id="emailLoginBtn" class="success">Entrar</button>
+          <button id="emailSignUpBtn" class="secondary">Criar Conta</button>
+          <button id="closeLoginModal" class="danger">Cancelar</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="modal" class="modal hidden">
+      <div class="modal-content" id=" editItems">
+        <label>Seção/Categoria:</label>
+        <div class="modal-row">
+          <select id="categorySelect">
+            <option value="Açougue e Peixaria">Açougue e Peixaria</option>
+            <option value="Bebidas">Bebidas</option>
+            <option value="Congelados">Congelados</option>
+            <option value="Frios e Laticínios">Frios e Laticínios</option>
+            <option value="Higiene Pessoal">Higiene Pessoal</option>
+            <option value="Hortifrúti">Hortifrúti (FLV)</option>
+            <option value="Limpeza">Limpeza</option>
+            <option value="Mercearia">Mercearia Seca</option>
+            <option value="Padaria">Padaria e Confeitaria</option>
+            <option value="Pet Shop">Pet Shop</option>
+            <option value="Outros">Outros / Não Definido</option>
+          </select>
+          <select id="storeSelect"></select>
+        </div>
+        <label>Estabelecimento</label>
+
+        <input
+          id="newStoreInput"
+          type="text"
+          placeholder="Ou digite um novo..."
+        />
+
+        <h2 id="modalTitle"></h2>
+
+        <label>Valor Unitário (R$)</label>
+        <input id="priceInput" type="number" step="0.01" />
+
+        <label>Quantidade</label>
+        <div class="qty">
+          <button id="minus" type="button">-</button>
+          <span id="qtyValue" type="button">0</span>
+          <button id="plus" type="button">+</button>
+        </div>
+
+        <p class="subTotal">Subtotal: <span id="subTotal">R$ 0.00</span></p>
+
+        <div class="modal-actions">
+          <button id="deleteBtn" type="button" class="danger">Excluir</button>
+          <button id="confirmBtn" type="button" class="success">
+            Confirmar
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <footer>
+      <div class="footer">
+        <div class="cart-info">
+          <img id="cartIcon" src="./IMAGES/empty-basket.png" alt="Carrinho" />
+          <span id="totalItems">0 itens</span>
+        </div>
+
+        <div id="total">
+          <p class="total">Total</p>
+
+          <strong id="totalPrice">R$ 0.00</strong>
+        </div>
+      </div>
+    </footer>
+
+    <!-- BOTÃO DE INSTALAÇÃO -->
+    <div id="install-container" class="hidden">
+      <button id="installBtn" class="btn-download-animado">
+        <img
+          src="./IMAGES/Logo-JaMercado-mobile.png"
+          class="btn-down-logo"
+          alt="Logo"
+        />
+        <span>INSTALAR APP</span>
+      </button>
+    </div>
+    <!-- FIM DO → BOTÃO DE INSTALAÇÃO -->
+
+    <!-- MODAL INSTALAR APP -->
+    <div id="installModal" class="modal hidden">
+      <div class="modal-content">
+        <h2 class="modal-install-title">INSTALAR APP</h2>
+        <img src="./IMAGES/Logo-JaMercado.png" />
+        <p>
+          Instale o <strong>JáMercado</strong> para usar sempre que desejar.
+        </p>
+
+        <div class="modal-actions">
+          <button id="cancelInstall" class="danger">Agora não</button>
+          <button id="confirmInstall" class="success">Instalar</button>
+        </div>
+      </div>
+    </div>
+    <!-- FIM DO → MODAL INSTALAR APP -->
+
+    <!-- MODAL DE FEEDBACKS -->
+    <div id="feedbackModal" class="modal hidden">
+      <div class="modal-content">
+        <h2 id="feedbackTitle"></h2>
+        <img
+          src="./IMAGES/Logo-JaMercado.png"
+          class="modal-content-img"
+          alt="Logo JáMercado"
+        />
+        <p id="feedbackMessage"></p>
+
+        <div class="modal-actions">
+          <button id="feedbackOk" class="success">OK</button>
+        </div>
+      </div>
+    </div>
+    <!-- FIM DO → MODAL DE FEEDBACKS -->
+
+    <!-- MODAL DE LISTAS SALVAS -->
+    <div id="listsModal" class="modal hidden">
+      <div class="modal-content">
+        <h2>📜 Listas Salvas</h2>
+
+        <img
+          src="./IMAGES/Logo-JaMercado.png"
+          class="modal-content-img"
+          alt="Logo JáMercado"
+        />
+
+        <div id="listsContainer"></div>
+
+        <div class="modal-actions">
+          <button id="closeListsModal" class="danger">Fechar</button>
+        </div>
+      </div>
+    </div>
+    <!-- FIM DO → MODAL DE LISTAS SALVAS -->
+
+    <!-- MODAL DE NOME -->
+    <div id="nameModal" class="modal hidden">
+      <div class="modal-content">
+        <h2>Como podemos te chamar?</h2>
+
+        <img
+          src="./IMAGES/Logo-JaMercado.png"
+          class="modal-content-img"
+          alt="Logo JáMercado"
+        />
+
+        <input
+          id="nameOnlyInput"
+          type="text"
+          placeholder="Seu nome ou apelido"
+        />
+
+        <div class="modal-actions">
+          <button id="saveNameBtn" class="success">Salvar</button>
+        </div>
+      </div>
+    </div>
+    <!-- FIM DO → MODAL DE NOME -->
+
+    <script type="module" src="./JS/script.js"></script>
+  </body>
+</html>
+
+<!-- CONTINUAR DAQUI → Perfil: CONFIDÊNCIAS PROFUNDAS (Gemini) -->
+<!-- 
+Enviar os arquivos: manifest.json e service-worker.js
+
+OBS: O geminai já os enviou a mim, sem que eu os enviasse a ele. Conferir antes de alterar.
+ -->
+
+<!-- VERIFICAR A SELEÇÃO DOS ITENS DA LISTA -->
