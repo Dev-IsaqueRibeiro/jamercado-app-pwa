@@ -14,27 +14,41 @@ import {
 import {
   doc,
   getDoc,
+  getDocs,
   setDoc,
   updateDoc,
   deleteDoc,
   runTransaction,
   collection,
-  addDoc,
   query,
   where,
   onSnapshot,
   orderBy,
 } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
+const userLocale = navigator.language || "pt-BR";
+const currencyCode = userLocale.startsWith("pt") ? "BRL" : "USD";
+
+const currencyFormatter = new Intl.NumberFormat(userLocale, {
+  style: "currency",
+  currency: currencyCode,
+});
+
+function formatCurrency(value) {
+  return currencyFormatter.format(value);
+}
+
 // ==========================
 // ESTADO DA APLICAÇÃO
 // ==========================
-let products = JSON.parse(localStorage.getItem("products")) || []; // Lista de Produtos
-let currentIndex = null; // Qual item está sendo editado
-let qty = 1; // Quantidade no Modal;
+let products = []; // Começa vazio, vamos carregar depois // Lista de Produtos
+let qty = 0; // Quantidade no Modal;
 let stores = JSON.parse(localStorage.getItem("stores")) || [];
 let savedLists = JSON.parse(localStorage.getItem("savedLists")) || [];
 let currentEditingItem = null; // Variável Global
+let userDocId = null; // 🔥 ID do usuário no Firestore (GLOBAL)
+let productSuggestions = []; // Carrega o o Histórido do que Foi digitado pelos Usuários
+let deferredPrompt;
 
 // ==========================
 // ELEMENTOS DO DOM
@@ -83,6 +97,46 @@ const confirmBtn = document.getElementById("confirmBtn");
 const deleteBtn = document.getElementById("deleteBtn");
 
 const storeSelect = document.getElementById("storeSelect");
+const newStoreInput = document.getElementById("newStoreInput");
+const nameOnlyInput = document.getElementById("nameOnlyInput");
+
+const confirmRemoveModal = document.getElementById("confirmRemoveModal");
+const confirmModal = document.getElementById("confirmModal");
+const confirmTitle = document.getElementById("confirmTitle");
+const confirmMessage = document.getElementById("confirmMessage");
+const confirmOk = document.getElementById("confirmOk");
+const confirmCancel = document.getElementById("confirmCancel");
+
+// 🔥 Fechar Modal ao clicar fora
+confirmRemoveModal.onclick = (e) => {
+  if (e.target === confirmRemoveModal) {
+    confirmRemoveModal.classList.add("hidden");
+  }
+};
+
+// 🔥 Fechar Modal ao clicar fora
+confirmModal.onclick = (e) => {
+  if (e.target === confirmModal) {
+    confirmModal.classList.add("hidden");
+  }
+};
+
+// 🔥 Fechar Sugestões ao clicar fora
+document.addEventListener("click", (e) => {
+  if (!e.target.closest(".add-product")) {
+    removeSuggestions();
+  }
+});
+
+// 🔥 CONFIGURAÇÃO DOS PLACEHOLDERS (INSERIR AQUI)
+if (newStoreInput) {
+  newStoreInput.placeholder = "Digite o mercado";
+}
+
+if (priceInput) {
+  priceInput.placeholder = "12,99";
+}
+
 // ==========================
 // FORMATAÇÃO EM TEMPO REAL
 // ==========================
@@ -101,19 +155,43 @@ const storeSelect = document.getElementById("storeSelect");
 
 // 2. Formatação de Moeda Automática
 priceInput.addEventListener("input", (e) => {
+  // 1. Remove tudo que não é número
   let value = e.target.value.replace(/\D/g, "");
-  value = (value / 100).toFixed(2) + "";
-  value = value.replace(".", ",");
-  value = value.replace(/(\d)(\d{3})(\d{3}),/g, "$1.$2.$3,");
-  value = value.replace(/(\d)(\d{3}),/g, "$1.$2,");
-  e.target.value = value === "0,00" ? "" : value;
+
+  // 2. Transforma em decimal (ex: 150 vira 1.50)
+  let numericValue = (Number(value) / 100).toFixed(2);
+
+  // 3. Formata para o padrão brasileiro (R$ 1.500,00)
+  let displayValue = Number(numericValue).toLocaleString("pt-BR", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
+
+  // 4. Se o campo estiver vazio, limpa, senão coloca o valor formatado
+  e.target.value = value === "" ? "" : displayValue;
+
   updateSubtotal();
 });
-const newStoreInput = document.getElementById("newStoreInput");
+
+// Limpar preço ao focar no input
+priceInput.addEventListener("focus", () => {
+  priceInput.value = "";
+});
 
 // ==============================
 // LÓGICA DE USUÁRIO E CONTADOR
 // ==============================
+function getUserName(user) {
+  const localName = localStorage.getItem("userName");
+
+  return (
+    user.displayName?.split(" ")[0] ||
+    localName ||
+    user.email?.split("@")[0] ||
+    "Usuário"
+  );
+}
+
 onAuthStateChanged(auth, async (user) => {
   const userInfo = document.getElementById("userInfo");
   const loginBtn = document.getElementById("loginBtn");
@@ -122,37 +200,47 @@ onAuthStateChanged(auth, async (user) => {
     loginBtn.style.display = "none";
     userInfo.style.display = "flex";
 
-    // 1. Inicia a escuta em tempo real do Firebase
-    initRealtimeProducts(user);
+    // LIMPA o array local para não duplicar com o que vem do banco
+    products = [];
 
     let userNumber = 0;
-    const userRef = doc(db, "users", user.uid);
 
-    try {
-      const userSnap = await getDoc(userRef);
+    // 🔍 PROCURA usuário existente
+    const q = query(collection(db, "users"), where("uid", "==", user.uid));
+    const querySnapshot = await getDocs(q);
 
-      if (userSnap.exists()) {
-        userNumber = userSnap.data().sequence;
-      } else {
-        // NOVO USUÁRIO: Gera número oficial no banco
-        userNumber = await generateNextSequence();
-        await setDoc(userRef, {
-          uid: user.uid,
-          email: user.email,
-          sequence: userNumber,
-          createdAt: new Date(),
-        });
-      }
-    } catch (e) {
-      console.error("Erro ao processar contador:", e);
+    if (!querySnapshot.empty) {
+      const docSnap = querySnapshot.docs[0];
+
+      userNumber = docSnap.data().sequence;
+      userDocId = docSnap.id; // 🔥 SALVA GLOBAL
+    } else {
+      // 🆕 NOVO USUÁRIO
+      userNumber = await generateNextSequence();
+
+      const nameToSave = getUserName(user);
+
+      const formattedNum = String(userNumber).padStart(3, "0");
+      const safeName = nameToSave.toLowerCase().replace(/\s+/g, "-");
+
+      userDocId = `${safeName}-${formattedNum}`; // 🔥 GLOBAL
+
+      const userRef = doc(db, "users", userDocId);
+
+      await setDoc(userRef, {
+        uid: user.uid,
+        email: user.email,
+        name: nameToSave,
+        sequence: userNumber,
+        createdAt: new Date(),
+        trialEnds: Date.now() + 30 * 24 * 60 * 60 * 1000,
+        isPremium: false,
+      });
     }
 
     // FORMATO IMPACTANTE: 001
     const formattedNumber = String(userNumber).padStart(3, "0");
-    const localName = localStorage.getItem("userName");
-    const name = user.displayName
-      ? user.displayName.split(" ")[0]
-      : localName || "Visitante";
+    const name = getUserName(user);
 
     userInfo.innerHTML = `
             <span class="user-name">${name}</span>
@@ -161,6 +249,13 @@ onAuthStateChanged(auth, async (user) => {
                 <span class="user-number">${formattedNumber}<sup>U</sup></span>
             </div>
         `;
+    products = [];
+    initRealtimeProducts(user);
+    loadSavedListsRealtime();
+
+    await loadProductSuggestions();
+
+    await checkSubscription();
 
     // Se for login por e-mail e não tiver nome, abre o modal
     if (!user.displayName && !localName) {
@@ -169,11 +264,40 @@ onAuthStateChanged(auth, async (user) => {
   } else {
     loginBtn.style.display = "block";
     userInfo.style.display = "none";
-
-    // Se não está logado, renderiza apenas os itens locais
+    // Se deslogado, pega do LocalStorage
+    products = JSON.parse(localStorage.getItem("products")) || [];
     renderWithGroups([...products]);
   }
 });
+
+// FUNÇÃO DE VERIFICAÇÃO DE ASSINATURA
+async function checkSubscription() {
+  if (!userDocId) return true;
+
+  const userRef = doc(db, "users", userDocId);
+  const userSnap = await getDoc(userRef);
+
+  if (!userSnap.exists()) return true;
+
+  const data = userSnap.data();
+
+  if (data.isPremium) return true;
+
+  const now = Date.now();
+  const trialEnds = data.trialEnds;
+
+  if (now > trialEnds) {
+    showPaymentModal();
+    return false;
+  }
+
+  return true;
+}
+// FIM DA → FUNÇÃO DE VERIFICAÇÃO DE ASSINATURA
+
+function showPaymentModal() {
+  document.getElementById("paymentModal").classList.remove("hidden");
+}
 
 // FUNÇÃO ÚNICA PARA CONTROLAR A SEQUÊNCIA (Mantenha apenas esta)
 async function generateNextSequence() {
@@ -227,7 +351,7 @@ function render() {
       const storeTitle = document.createElement("h3");
       storeTitle.className = "store-title";
       storeTitle.textContent = store;
-      productList.appendChild(storeTitle);
+      fragment.appendChild(storeTitle);
 
       Object.keys(grouped[store])
         .sort()
@@ -235,7 +359,7 @@ function render() {
           const catTitle = document.createElement("h4");
           catTitle.className = "category-title"; // Estilize no CSS (ex: cor #fa6000, fonte menor)
           catTitle.textContent = category;
-          productList.appendChild(catTitle);
+          fragment.appendChild(catTitle);
 
           // 3. Ordenar Produtos Alfabeticamente dentro da categoria
           grouped[store][category]
@@ -243,26 +367,35 @@ function render() {
             .forEach((p) => {
               const li = document.createElement("li");
               li.innerHTML = `
-          <div class="item-left">
-              <span class="dot"></span>
-              <div class="item-info"><strong>${p.name}</strong></div>
-          </div>
-          ${p.done ? `<span class="item-price">R$ ${(p.price * p.qty).toFixed(2)}</span>` : ""}
-        `;
+  <div class="item-row">
+    <span class="desc ${p.done ? "riscado" : ""}">${p.name}</span>
+    ${
+      p.done
+        ? `
+      <span class="qty">${p.qty}</span>
+      <span class="unit">${p.unit || "UN"}</span>
+      <span class="price">${formatCurrency(p.price)}</span>
+      <span class="total">${formatCurrency(p.price * p.qty)}</span>
+    `
+        : ""
+    }
+  </div>
+`;
               if (p.done) li.classList.add("checked");
               li.onclick = () => openModal(p.originalIndex);
-              productList.appendChild(li);
+              fragment.appendChild(li);
 
               if (p.done) {
                 total += p.price * p.qty;
-                items += p.qty;
+                items += 1; // 🔥 sempre conta como 1 unidade
               }
             });
         });
     });
 
-  totalItems.textContent = `${items} itens`;
-  totalPrice.textContent = `R$ ${total.toFixed(2)}`;
+  totalItems.textContent = items === 1 ? "1 produto" : `${items} produtos`;
+
+  totalPrice.textContent = formatCurrency(total);
 
   // ÍCONE DO CARRINHO
   const hasItems = products.some((p) => p.done);
@@ -283,69 +416,169 @@ function saveData() {
   localStorage.setItem("stores", JSON.stringify(stores));
 }
 
-// FUNÇÃO SALVAR LISTA ATUAL
-function saveCurrentList() {
-  const doneItems = products.filter((p) => p.done);
+// FUNÇÃO VER (VISUALIZAR) LISTAS SALVAS
+async function viewSavedLists() {
+  // 🔥 tenta Firebase primeiro
+  if (userDocId && navigator.onLine) {
+    try {
+      const snapshot = await getDocs(
+        query(
+          collection(db, "users", userDocId, "saved_lists"),
+          orderBy("createdAt", "desc"),
+        ),
+      );
 
-  if (doneItems.length === 0) {
-    showFeedback("Atenção", "Nenhum item finalizado para salvar!");
-    return;
+      savedLists = snapshot.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+      }));
+
+      // salva offline
+      localStorage.setItem("savedLists", JSON.stringify(savedLists));
+    } catch (e) {
+      console.error("Offline — usando cache local");
+    }
   }
 
-  const total = doneItems.reduce((sum, p) => sum + p.price * p.qty, 0);
+  // 🔥 fallback offline
+  if (!savedLists || savedLists.length === 0) {
+    savedLists = JSON.parse(localStorage.getItem("savedLists")) || [];
 
-  const newList = {
-    id: Date.now(),
-    date: new Date().toLocaleDateString("pt-BR"),
-    items: doneItems.map((p) => ({ ...p })),
-    total,
-  };
+    if (savedLists.length === 0) {
+      showFeedback("Atenção", "Nenhuma lista salva ainda.");
+      return;
+    }
+  }
 
-  savedLists.push(newList);
-
-  localStorage.setItem("savedLists", JSON.stringify(savedLists));
-
-  showFeedback("Sucesso", "Lista salva com sucesso!");
+  renderSavedLists();
 }
+// FIM DA → FUNÇÃO VER (VISUALIZAR) LISTAS SALVAS
 
-// FUNÇÃO LISTAS SALVAS
-function viewSavedLists() {
-  if (savedLists.length === 0) {
-    showFeedback("Atenção", "Nenhuma lista salva ainda.");
-    return;
-  }
-
+// FUNÇÃO RENDERIZAR LISTAS SALVAS
+function renderSavedLists() {
   listsContainer.innerHTML = "";
 
   savedLists.forEach((list) => {
     const div = document.createElement("div");
-    div.style.borderBottom = "1px solid #ccc";
-    div.style.marginBottom = "10px";
-    div.style.paddingBottom = "10px";
+    div.className = "saved-list-card";
 
-    const title = document.createElement("h3");
-    title.textContent = `🗓️ ${list.date} - R$ ${list.total.toFixed(2)}`;
+    const date = new Date(
+      list.createdAt?.seconds ? list.createdAt.seconds * 1000 : list.createdAt,
+    );
 
-    div.appendChild(title);
+    div.innerHTML = `
+  <h3>
+    🗓️ ${date.toLocaleDateString()}
+    - ${formatCurrency(list.total)}
+  </h3>
+`;
 
-    list.items.forEach((item) => {
-      const p = document.createElement("p");
-      p.textContent = `• ${item.name} | ${item.qty}x | R$ ${item.price.toFixed(2)} | ${item.store || "Sem mercado"}`;
-      div.appendChild(p);
-    });
+    div.onclick = () => openSavedList(list.id);
 
     listsContainer.appendChild(div);
   });
 
   listsModal.classList.remove("hidden");
 }
+// FIM DA → FUNÇÃO RENDERIZAR LISTAS SALVAS
 
-// FUNÇÃO MOSTRAR LISTA SALVA
+// FUNÇÃO ABRIR LISTA SALVA
+async function openSavedList(listId) {
+  try {
+    const snapshot = await getDocs(
+      collection(db, "users", userDocId, "saved_lists", listId, "items"),
+    );
+
+    const items = snapshot.docs.map((doc) => doc.data());
+
+    renderSavedListItems(items);
+  } catch (e) {
+    console.error("Erro ao abrir lista:", e);
+  }
+}
+// FIM DA → FUNÇÃO ABRIR LISTA SALVA
+
+// FUNÇÃO RENDERIZAR ITENS DA LISTA
+function renderSavedListItems(items) {
+  listsContainer.innerHTML = "";
+
+  const grouped = {};
+
+  items.forEach((p) => {
+    const store = p.store || "Sem Estabelecimento";
+    const category = p.category || "Outros";
+
+    if (!grouped[store]) grouped[store] = {};
+    if (!grouped[store][category]) grouped[store][category] = [];
+
+    grouped[store][category].push(p);
+  });
+
+  Object.keys(grouped)
+    .sort((a, b) => a.localeCompare(b, "pt-BR", { sensitivity: "base" }))
+    .forEach((store) => {
+      const storeTitle = document.createElement("h3");
+      storeTitle.className = "store-title-main";
+      const firstItem = grouped[store][Object.keys(grouped[store])[0]][0];
+      const icon = getStoreIcon(firstItem.storeType);
+
+      storeTitle.textContent = `${icon} ${store}`;
+
+      listsContainer.appendChild(storeTitle);
+
+      Object.keys(grouped[store]).forEach((category) => {
+        const catTitle = document.createElement("h4");
+        catTitle.className = "category-title-sub";
+        catTitle.textContent = category;
+
+        listsContainer.appendChild(catTitle);
+
+        grouped[store][category].forEach((p) => {
+          const row = document.createElement("div");
+          row.className = "cart-row";
+
+          row.innerHTML = `
+          <div class="col-desc">${p.name}</div>
+          <div class="col-qty">${p.qty}</div>
+          <div class="col-unit">${p.unit || "UN"}</div>
+          <div class="col-price">${formatCurrency(p.price)}</div>
+          <div class="col-total">${formatCurrency(p.price * p.qty)}</div>
+        `;
+
+          listsContainer.appendChild(row);
+        });
+      });
+    });
+}
+// FIM DA → FUNÇÃO RENDERIZAR ITENS DA LISTA
+
+// FUNÇÃO MODAL DE FEEDBACK (SUCESSO / ERRO / ATENÇÃO)
 function showFeedback(title, message) {
   feedbackTitle.textContent = title;
   feedbackMessage.textContent = message;
 
   feedbackModal.classList.remove("hidden");
+}
+// FIM DA → FUNÇÃO MODAL DE FEEDBACK (SUCESSO / ERRO / ATENÇÃO)
+
+// MODAL DE CONFIRMAÇÃO
+function showConfirm(title, message) {
+  return new Promise((resolve) => {
+    confirmTitle.textContent = title;
+    confirmMessage.textContent = message;
+
+    confirmModal.classList.remove("hidden");
+
+    confirmOk.onclick = () => {
+      confirmModal.classList.add("hidden");
+      resolve(true);
+    };
+
+    confirmCancel.onclick = () => {
+      confirmModal.classList.add("hidden");
+      resolve(false);
+    };
+  });
 }
 
 feedbackOk.onclick = () => {
@@ -365,35 +598,111 @@ function capitalizeWords(text) {
     .join(" ");
 }
 
+function normalizeText(str) {
+  return str
+    .normalize("NFD") // separa acento da letra
+    .replace(/[\u0300-\u036f]/g, "") // remove acentos
+    .toLowerCase() // padroniza
+    .trim();
+}
+
+// ==========================
+// EMOJIS DE CATEGORIAS / SEÇÕES
+// ==========================
+const categoryIcons = {
+  "Açougue e Peixaria": "🥩🦐",
+  Bebidas: "🥤🧃",
+  Congelados: "🍨🫓",
+  "Decoração e Outros": "🖼️🪴",
+  "Eletrodomésticos e Eletrônicos": "🎛️🎮",
+  "Frios e Laticínios": "🧀🥛",
+  Guloseimas: "🍫🍪",
+  "Higiene Pessoal": "🧼🧻",
+  Hortifruti: "🥕🥑",
+  "Jogos e Brinquedos": "♟️⚽",
+  Limpeza: "🪣🧹",
+  "Mercearia Seca": "🫘🧂",
+  "Móveis e Utensílios": "🛋️🔪",
+  "Padaria e Confeitaria": "🥖🍰",
+  "Pet Shop": "🐶🐱",
+};
+
+// ==========================
+// EMOJIS DE TIPOS DE ESTABELECIMENTOS
+// ==========================
+const storeTypes = {
+  acougue: "🥩",
+  cosmeticos: "💄",
+  eletronicos: "📱",
+  farmacia: "💊",
+  hortifruti: "🥕",
+  lanchonete: "🍔",
+  loja: "🏪",
+  padaria: "🥖",
+  petshop: "🐶",
+  pizzaria: "🍕",
+  posto: "⛽",
+  restaurante: "🍽️",
+  roupas: "👕",
+  supermercado: "🛒",
+  outro: "⁉️",
+};
+
+// FUNÇÃO DE PEGAR O ÍCONE DO ESTABELECIMENTO
+function getStoreIcon(type) {
+  if (!type) return "🏪";
+  return storeTypes[type] || "🏪";
+}
+
+const normalizedIcons = Object.fromEntries(
+  Object.entries(categoryIcons).map(([key, value]) => [
+    normalizeText(key),
+    value,
+  ]),
+);
+
 // ADICIONAR PRODUTO
-addBtn.onclick = () => {
+addBtn.onclick = async () => {
+  const user = auth.currentUser;
+  if (!user) {
+    showFeedback("Atenção", "Faça login para adicionar itens");
+    return;
+  }
+
   let inputValue = productInput.value.trim();
+
+  const categoryEl = document.getElementById("categorySelect");
+  let selectedCategory = categoryEl ? categoryEl.value : "Outros";
+
+  selectedCategory = selectedCategory.trim();
+
   if (!inputValue) return;
 
-  // Transforma o texto antes de salvar
   const formattedName = capitalizeWords(inputValue);
+  const id = Date.now().toString();
 
-  products.push({
+  const product = {
+    id,
     name: formattedName,
     price: 0,
     qty: 1,
     done: false,
     store: "",
-  });
+    category: selectedCategory,
+    userId: user.uid,
+    createdAt: new Date(),
+  };
 
-  saveData();
-  productInput.value = "";
-  renderWithGroups([...products]);
+  try {
+    // 🔥 SALVA NO FIREBASE
+    await setDoc(doc(db, "users", userDocId, "shopping_list", id), product);
+
+    productInput.value = "";
+  } catch (e) {
+    console.error("Erro ao salvar:", e);
+  }
 };
 // FIM → ADICIONAR PRODUTO
-
-// Faz o texto do input ficar visualmente bonito enquanto digita
-productInput.addEventListener("input", (e) => {
-  const start = e.target.selectionStart;
-  const end = e.target.selectionEnd;
-  e.target.value = capitalizeWords(e.target.value);
-  e.target.setSelectionRange(start, end); // Mantém o cursor no lugar certo
-});
 
 // Adicionar produto ao pressionar ENTER
 productInput.addEventListener("keyup", (event) => {
@@ -401,6 +710,60 @@ productInput.addEventListener("keyup", (event) => {
     addBtn.click(); // Simula o clique no botão de adicionar
   }
 });
+
+// FUNÇÃO AUTOCOMPLETAR
+productInput.addEventListener("input", () => {
+  const value = normalizeText(productInput.value);
+
+  if (!value) {
+    removeSuggestions();
+    return;
+  }
+
+  const matches = [];
+
+  for (const p of productSuggestions) {
+    if (normalizeText(p).startsWith(value)) {
+      matches.push(p);
+    }
+
+    if (matches.length === 5) break;
+  }
+
+  showSuggestions(matches);
+});
+// FIM DA → FUNÇÃO AUTOCOMPLETAR
+
+// FUNÇÃO DE SUGESTÕES
+function showSuggestions(list) {
+  removeSuggestions();
+
+  const container = document.createElement("div");
+  container.id = "autocomplete";
+
+  list.forEach((name) => {
+    const div = document.createElement("div");
+    div.className = "autocomplete-item";
+    div.textContent = name;
+
+    div.onclick = () => {
+      productInput.value = name;
+      removeSuggestions();
+    };
+
+    container.appendChild(div);
+  });
+
+  document.querySelector(".add-product").appendChild(container);
+}
+// FIM DA → FUNÇÃO DE SUGESTÕES
+
+// FUNÇÃO REMOVER SUGESTÕES
+function removeSuggestions() {
+  const old = document.getElementById("autocomplete");
+  if (old) old.remove();
+}
+// FIM DA → FUNÇÃO REMOVER SUGESTÕES
 
 // FUNÇÃO RENDERIZAR MERCADOS
 function renderStores() {
@@ -416,199 +779,560 @@ function renderStores() {
 
 // ABRIR MODAL
 function openModal(p) {
-  // Guarda o objeto clicado (seja do banco ou do local)
   currentEditingItem = p;
 
   modalTitle.textContent = p.name;
-  priceInput.value = p.price || "";
-  qty = p.qty || 1;
-  qtyValue.textContent = qty;
+  priceInput.value = "";
+  priceInput.placeholder = "0,00";
+
+  qty = 0;
+  qtyValue.textContent = "";
+  qtyValue.setAttribute("placeholder", "1");
 
   renderStores();
+
+  // 🔥 Garante que o mercado salvo exista na lista
+  if (p.store && !stores.includes(p.store)) {
+    stores.push(p.store);
+    saveData();
+    renderStores();
+  }
+
   storeSelect.value = p.store || "";
+
   document.getElementById("categorySelect").value = p.category || "Outros";
+
+  // Define UN como padrão
+  document.querySelector('input[name="unitType"][value="UN"]').checked = true;
 
   updateSubtotal();
   modal.classList.remove("hidden");
+  confirmBtn.textContent = "Confirmar";
+  deleteBtn.textContent = "Excluir";
 }
 // FIM DA → FUNÇÃO ABRIR MODAL
 
+// FUNÇÃO ABRIR MODAL CARRINHO
+function openCartModal(p) {
+  currentEditingItem = p;
+
+  modalTitle.textContent = p.name;
+
+  // Preenche com valores existentes
+  priceInput.value = p.price
+    ? p.price.toLocaleString("pt-BR", {
+        minimumFractionDigits: 2,
+      })
+    : "";
+
+  qty = p.qty || 0;
+
+  qtyValue.textContent =
+    (p.unit || "UN") === "KG" ? Number(qty).toFixed(3) : qty;
+
+  renderStores();
+
+  // 🔥 Garante que o mercado salvo exista na lista
+  if (p.store && !stores.includes(p.store)) {
+    stores.push(p.store);
+    saveData();
+    renderStores();
+  }
+
+  storeSelect.value = p.store || "";
+
+  document.getElementById("categorySelect").value = p.category || "Outros";
+
+  // Seleciona unidade
+  const unit = p.unit || "UN";
+  document.querySelector(`input[name="unitType"][value="${unit}"]`).checked =
+    true;
+
+  updateSubtotal();
+
+  modal.classList.remove("hidden");
+  confirmBtn.textContent = "Alterar";
+  deleteBtn.textContent = "Remover";
+}
+// FIM DA → FUNÇÃO ABRIR MODAL CARRINHO
+
+// ==========================
 // RENDERIZAÇÃO
+// ==========================
+let total = 0;
+let totalEntries = 0;
+
 function renderWithGroups(listToRender) {
   productList.innerHTML = "";
-  let total = 0;
-  let items = 0;
+
+  const fragment = document.createDocumentFragment();
+  total = 0;
+  totalEntries = 0;
+
+  // Separar pendentes e confirmados
+  const pending = listToRender.filter((p) => !p.done);
+  const done = listToRender.filter((p) => p.done);
+
+  // Verificar se há itens
+  const hasItems = pending.length > 0 || done.length > 0;
+
+  emptyState.style.display = hasItems ? "none" : "block";
+  productList.style.display = hasItems ? "block" : "none";
+
+  if (!hasItems) return;
+
+  // 📜 Lista de Compras
+  if (pending.length) {
+    const pendingTitle = document.createElement("h2");
+    pendingTitle.textContent = "📜 Lista de Compras";
+    pendingTitle.className = "cart-section-title";
+    fragment.appendChild(pendingTitle);
+
+    renderGrouped(pending, false, fragment);
+  }
+
+  // 🛒 Carrinho
+  if (done.length) {
+    const cartTitle = document.createElement("h2");
+    cartTitle.textContent = "🛒 Carrinho";
+    cartTitle.className = "cart-section-title";
+    fragment.appendChild(cartTitle);
+
+    renderGrouped(done, true, fragment);
+  }
+
+  totalItems.textContent =
+    totalEntries === 1 ? "1 produto" : `${totalEntries} produtos`;
+
+  totalPrice.textContent = formatCurrency(total);
+
+  productList.appendChild(fragment);
+}
+
+// ==========================
+// RENDERIZAÇÃO AGRUPADA
+// ==========================
+function renderGrouped(items, isCart, fragment) {
   const grouped = {};
 
-  listToRender.forEach((p) => {
-    const store = p.store || "Sem mercado";
-    const cat = p.category || "Outros";
+  items.forEach((p) => {
+    const store = p.store || "Sem Estabelecimento";
+    const category = p.category || "Outros";
+
     if (!grouped[store]) grouped[store] = {};
-    if (!grouped[store][cat]) grouped[store][cat] = [];
-    grouped[store][cat].push(p);
+    if (!grouped[store][category]) grouped[store][category] = [];
+
+    grouped[store][category].push(p);
   });
 
   Object.keys(grouped)
-    .sort()
+    .sort((a, b) => a.localeCompare(b, "pt-BR", { sensitivity: "base" }))
     .forEach((store) => {
-      const sTitle = document.createElement("h3");
-      sTitle.className = "store-title";
-      sTitle.textContent = store;
-      productList.appendChild(sTitle);
+      const storeTitle = document.createElement("h3");
+      storeTitle.className = "store-title-main";
+      const firstItem = grouped[store][Object.keys(grouped[store])[0]][0];
+      const icon = getStoreIcon(firstItem.storeType);
+
+      storeTitle.textContent = `${icon} ${store}`;
+
+      fragment.appendChild(storeTitle);
 
       Object.keys(grouped[store])
-        .sort()
+        .sort((a, b) => a.localeCompare(b, "pt-BR", { sensitivity: "base" }))
         .forEach((category) => {
-          const cTitle = document.createElement("h4");
-          cTitle.className = "category-title";
-          cTitle.textContent = category;
-          productList.appendChild(cTitle);
+          const catTitle = document.createElement("h4");
+          catTitle.className = "category-title-sub";
+
+          // 🔥 PADRONIZA A CATEGORIA ANTES DE USAR
+          let fixedCategory = category;
+
+          if (fixedCategory.includes("Hortifruti")) {
+            fixedCategory = "Hortifruti";
+          } else if (fixedCategory.includes("Padaria")) {
+            fixedCategory = "Padaria e Confeitaria";
+          } else if (fixedCategory.includes("Mercearia")) {
+            fixedCategory = "Mercearia Seca";
+          }
+
+          // 🔥 NORMALIZA DEPOIS DE PADRONIZAR
+          const normalizedCategory = normalizeText(fixedCategory);
+
+          catTitle.textContent = `${normalizedIcons[normalizedCategory] || "🛒"} ${fixedCategory}`;
+
+          fragment.appendChild(catTitle);
+
+          if (isCart) {
+            const header = document.createElement("div");
+            header.className = "cart-grid cart-header";
+
+            header.innerHTML = `
+            <span class="col-desc">Descrição</span>
+            <span class="col-qty">Qt</span>
+            <span class="col-unit">Un</span>
+            <span class="col-price">Vlr</span>
+            <span class="col-total">Tot</span>
+          `;
+
+            fragment.appendChild(header);
+          }
 
           grouped[store][category]
-            .sort((a, b) => a.name.localeCompare(b.name))
+            .sort((a, b) => a.name.localeCompare(b.name, "pt-BR"))
             .forEach((p) => {
               const li = document.createElement("li");
-              // Adicionamos a classe 'checked' se o produto já foi finalizado
-              if (p.done) li.classList.add("checked");
+              li.className = p.done ? "item-confirmado" : "item-pendente";
 
               li.innerHTML = `
-                        <div class="item-left">
-                            <span class="dot"></span>
-                            <div class="item-info"><strong>${p.name}</strong></div>
-                        </div>
-                        <div class="item-right">
-                             ${p.done ? `<span class="item-price">R$ ${(p.price * p.qty).toFixed(2)}</span>` : ""}
-                        </div>
-                    `;
+  <div class="cart-row">
 
-              // IMPORTANTE: Passa o objeto p para o modal
-              li.onclick = () => openModal(p);
-              productList.appendChild(li);
+    <div class="col-desc">
+      <input type="checkbox" class="item-checkbox"
+      ${p.done ? "checked" : ""}
+      onclick="event.stopPropagation(); handleCheckboxClick('${p.id}', ${p.done})">
+
+      <strong style="${p.done ? "text-decoration: line-through;" : ""}">
+        ${p.name}
+      </strong>
+    </div>
+
+    ${
+      p.done
+        ? `
+        <div class="col-qty">${p.qty}</div>
+        <div class="col-unit">${p.unit || "UN"}</div>
+        <div class="col-price">${formatCurrency(p.price)}</div>
+        <div class="col-total">${formatCurrency(p.price * p.qty)}</div>
+      `
+        : ""
+    }
+
+  </div>
+`;
 
               if (p.done) {
                 total += p.price * p.qty;
-                items += p.qty;
+                totalEntries += 1;
               }
+
+              li.onclick = () => {
+                if (p.done) {
+                  openCartModal(p);
+                } else {
+                  openModal(p);
+                }
+              };
+              fragment.appendChild(li);
             });
         });
     });
-
-  totalItems.textContent = `${items} itens`;
-  totalPrice.textContent = `R$ ${total.toFixed(2)}`;
 }
-// FIM DA → FUNÇÃO RENDERIZAÇÃO
+// FIM DA → FUNÇÃO RENDERIZAÇÃO AGRUPADA
+
+// FUNÇÃO PARA AS CHECKBOX'S DA LISTA DO CARRINHO
+async function handleCheckboxClick(id, isDone) {
+  if (isDone) {
+    const confirmar = confirm(
+      "Deseja remover este item do carrinho e devolvê-lo à lista de compras?",
+    );
+
+    if (!confirmar) return;
+
+    const item = products.find((p) => p.id === id);
+
+    await setDoc(doc(db, "users", userDocId, "shopping_list", id), {
+      ...item,
+      done: false,
+      createdAt: new Date(),
+    });
+
+    await deleteDoc(doc(db, "users", userDocId, "cart", id));
+  } else {
+    const p = products.find((item) => item.id === id);
+    openModal(p);
+  }
+}
+
+window.handleCheckboxClick = handleCheckboxClick;
 
 // SUBTOTAL DINÂMICO
 function updateSubtotal() {
-  const rawValue = priceInput.value.replace(/\./g, "").replace(",", ".");
-  const price = parseFloat(rawValue) || 0;
-  subTotal.textContent = `R$ ${(price * qty).toFixed(2)}`;
+  // Troca a vírgula da máscara por ponto para o JS conseguir calcular
+  const numeric = priceInput.value.replace(/\D/g, "");
+  const price = Number(numeric) / 100 || 0;
+
+  subTotal.textContent = formatCurrency(price * qty);
 }
 
-priceInput.oninput = updateSubtotal;
+// CONTROLE DE QUANTIDADE E UNIDADE - MODAL
+const unitRadios = document.getElementsByName("unitType");
 
-// CONTROLE DE QUANTIDADE
+// Botão +: Acrescenta
 plus.onclick = () => {
-  qty++;
-  qtyValue.textContent = qty;
+  const selectedUnit = document.querySelector('input[name="unitType"]:checked');
+  const isKg = selectedUnit?.value === "KG";
+
+  if (isKg) {
+    qty = parseFloat((qty + 0.001).toFixed(3));
+    qtyValue.textContent = qty.toFixed(3);
+  } else {
+    qty += 1;
+    qtyValue.textContent = qty;
+  }
+
   updateSubtotal();
 };
 
+// Botão -: Decrementa
 minus.onclick = () => {
-  if (qty > 1) qty--;
-  qtyValue.textContent = qty;
+  const selectedUnit = document.querySelector('input[name="unitType"]:checked');
+  const isKg = selectedUnit?.value === "KG";
+
+  if (isKg) {
+    if (qty > 0) {
+      qty = parseFloat((qty - 0.001).toFixed(3));
+      if (qty < 0) qty = 0;
+      qtyValue.textContent = qty.toFixed(3);
+    }
+  } else {
+    if (qty > 0) {
+      qty--;
+      qtyValue.textContent = qty;
+    }
+  }
+
   updateSubtotal();
 };
 
+qtyValue.contentEditable = true;
+
+qtyValue.addEventListener("focus", () => {
+  qtyValue.textContent = "";
+});
+
+// FIM DO → CONTROLE DE QUANTIDADE E UNIDADE - MODAL
+
+// Máscara automática reversa para KG
+qtyValue.addEventListener("input", (e) => {
+  const selectedUnit = document.querySelector('input[name="unitType"]:checked');
+  const isKg = selectedUnit?.value === "KG";
+
+  if (isKg) {
+    let digits = e.target.textContent.replace(/\D/g, "");
+
+    // Limita a 4 dígitos
+    digits = digits.slice(-4);
+
+    // Completa com zeros à esquerda
+    digits = digits.padStart(4, "0");
+
+    // Insere o ponto automaticamente
+    const formatted = `${digits.slice(0, -3)}.${digits.slice(-3)}`;
+
+    // 🔥 Mostra SEMPRE os 3 dígitos
+    e.target.textContent = formatted;
+
+    // Mantém cursor no final
+    const range = document.createRange();
+    const sel = window.getSelection();
+    range.selectNodeContents(e.target);
+    range.collapse(false);
+    sel.removeAllRanges();
+    sel.addRange(range);
+
+    // 🔥 Usa Number mas mantém exibição separada
+    qty = Number(formatted);
+  } else {
+    let val = e.target.textContent.replace(/\D/g, "");
+    e.target.textContent = val;
+
+    const range = document.createRange();
+    const sel = window.getSelection();
+    range.selectNodeContents(e.target);
+    range.collapse(false);
+    sel.removeAllRanges();
+    sel.addRange(range);
+
+    qty = parseInt(val) || 0;
+  }
+
+  updateSubtotal();
+});
+
+// Troca de UN para KG reseta o valor
+unitRadios.forEach((radio) => {
+  radio.onchange = () => {
+    qty = 0;
+
+    if (radio.value === "KG") {
+      qtyValue.textContent = "0.000";
+    } else {
+      qtyValue.textContent = "0";
+    }
+
+    updateSubtotal();
+  };
+});
+
+// FUNÇÃO - BOTÃO CONFIRMAR - MODAL
 confirmBtn.onclick = async () => {
   const user = auth.currentUser;
   if (!user) {
-    showFeedback("Atenção", "Você precisa estar logado para salvar itens!");
+    showFeedback("Atenção", "Você precisa estar logado!");
     return;
   }
 
-  // 1. Lógica de Mercado (Recuperada do seu código original)
   const newStore = newStoreInput.value.trim();
   const selectedStore = storeSelect.value;
   let finalStore = newStore || selectedStore || "Sem mercado";
 
-  // Se o usuário digitou um mercado novo, salva no localStorage para futuras sugestões
-  if (newStore && !stores.includes(newStore)) {
-    stores.push(newStore);
-    localStorage.setItem("stores", JSON.stringify(stores));
-  }
-
-  // 2. Preparação dos Dados
   const category = document.getElementById("categorySelect").value;
 
+  const storeType = document.getElementById("storeTypeSelect").value;
+
+  const cleanPrice = priceInput.value.replace(/\D/g, "") / 100;
+
+  const selectedUnit = document.querySelector('input[name="unitType"]:checked');
+  const unit = selectedUnit ? selectedUnit.value : "UN";
+
   const productData = {
-    price: parseFloat(priceInput.value) || 0,
-    qty: qty,
+    name: currentEditingItem.name,
+    price: cleanPrice || 0,
+    qty: parseFloat(qty),
+    unit: unit,
     store: finalStore,
+    storeType: storeType || "loja",
     category: category,
     done: true,
     userId: user.uid,
-    updatedAt: new Date(), // Boa prática para saber quando foi alterado
+    updatedAt: new Date(),
   };
 
   try {
-    // 3. Lógica Inteligente: Atualizar ou Criar
-    if (currentEditingItem && currentEditingItem.id) {
-      // ITEM JÁ EXISTE NO FIREBASE: Apenas atualizamos
-      const docRef = doc(db, "user_products", currentEditingItem.id);
-      await updateDoc(docRef, productData);
-    } else {
-      // ITEM É NOVO (Vem do localStorage): Criamos no Firebase
-      productData.name = modalTitle.textContent;
-      productData.createdAt = new Date();
-
-      await addDoc(collection(db, "user_products"), productData);
-
-      // Remove da lista temporária (localStorage)
-      products = products.filter(
-        (item) => item.name !== currentEditingItem.name,
+    if (currentEditingItem.done) {
+      // 🔥 ATUALIZA NO CARRINHO
+      await updateDoc(
+        doc(db, "users", userDocId, "cart", currentEditingItem.id),
+        productData,
       );
-      saveData();
+    } else {
+      // 🔥 MOVE PARA CARRINHO
+      await setDoc(
+        doc(db, "users", userDocId, "cart", currentEditingItem.id),
+        productData,
+      );
+
+      await deleteDoc(
+        doc(db, "users", userDocId, "shopping_list", currentEditingItem.id),
+      );
     }
 
     modal.classList.add("hidden");
   } catch (e) {
-    console.error("Erro ao salvar:", e);
-    showFeedback("Erro", "Não foi possível sincronizar com o banco.");
+    console.error(e);
   }
-};
 
-// EXCLUIR PRODUTO
+  await saveProductHistory(currentEditingItem.name);
+};
+// FIM DA FUNÇÃO - BOTÃO CONFIRMAR - MODAL
+
+// FUNÇÃO CRIAR HISTÓRICO (Cria um Histórico de tudo o que os Usuários Digitam)
+async function saveProductHistory(productName) {
+  if (!userDocId) return;
+
+  const normalized = normalizeText(productName);
+
+  const ref = doc(db, "users", userDocId, "product_history", normalized);
+
+  await setDoc(ref, {
+    name: productName,
+    updatedAt: new Date(),
+  });
+}
+// FIM DA → FUNÇÃO CRIAR HISTÓRICO (Cria um Histórico de tudo o que os Usuários Digitam)
+
+// FUNÇÃO CARREGAR HISTÓRICO DE PRODUTOS
+async function loadProductSuggestions() {
+  if (!userDocId) return;
+
+  try {
+    const snap = await getDocs(
+      collection(db, "users", userDocId, "product_history"),
+    );
+
+    productSuggestions = snap.docs.map((doc) => doc.data().name);
+  } catch (e) {
+    console.error("Erro ao carregar sugestões:", e);
+  }
+}
+// FIM DA → FUNÇÃO CARREGAR HISTÓRICO DE PRODUTOS
+
+// FUNÇÃO EXCLUIR PRODUTO
 deleteBtn.onclick = async () => {
   try {
-    if (currentEditingItem && currentEditingItem.id) {
-      // Se está no Firebase, deleta de lá
-      await deleteDoc(doc(db, "user_products", currentEditingItem.id));
-    } else {
-      // Se está no localStorage, remove do array local
-      products = products.filter(
-        (item) => item.name !== currentEditingItem.name,
+    if (!currentEditingItem) return;
+
+    if (currentEditingItem.done) {
+      const item = {
+        id: currentEditingItem.id,
+        name: currentEditingItem.name,
+        price: currentEditingItem.price || 0,
+        qty: currentEditingItem.qty || 0,
+        unit: currentEditingItem.unit || "UN",
+        store: currentEditingItem.store || "",
+        category: currentEditingItem.category || "Outros",
+        done: false,
+        userId: auth.currentUser.uid,
+        createdAt: new Date(),
+      };
+
+      await setDoc(
+        doc(db, "users", userDocId, "shopping_list", currentEditingItem.id),
+        item,
       );
-      saveData();
-      renderWithGroups([...products]);
+
+      await deleteDoc(
+        doc(db, "users", userDocId, "cart", currentEditingItem.id),
+      );
+    } else {
+      await deleteDoc(
+        doc(db, "users", userDocId, "shopping_list", currentEditingItem.id),
+      );
     }
+
     modal.classList.add("hidden");
   } catch (e) {
-    console.error("Erro ao excluir:", e);
-    showFeedback("Erro", "Não foi possível excluir o item.");
+    console.error(e);
   }
 };
+// FIM DA → FUNÇÃO EXCLUIR PRODUTO
 
 // LIMPAR LISTA
-clearBtn.onclick = () => {
-  products = [];
-  saveData();
-  // Se estiver logado, o initRealtimeProducts cuidará de mostrar apenas o que está no banco
-  const user = auth.currentUser;
-  if (user) {
-    initRealtimeProducts(user);
-  } else {
-    renderWithGroups([]);
+clearBtn.onclick = async () => {
+  if (!userDocId) return;
+
+  const confirmClear = await showConfirm(
+    "Limpar Lista",
+    "Deseja limpar toda a lista?",
+  );
+
+  if (!confirmClear) return;
+
+  try {
+    const shoppingSnap = await getDocs(
+      collection(db, "users", userDocId, "shopping_list"),
+    );
+
+    const cartSnap = await getDocs(collection(db, "users", userDocId, "cart"));
+
+    for (const docSnap of shoppingSnap.docs) {
+      await deleteDoc(docSnap.ref);
+    }
+
+    for (const docSnap of cartSnap.docs) {
+      await deleteDoc(docSnap.ref);
+    }
+  } catch (e) {
+    console.error(e);
   }
 };
 
@@ -665,26 +1389,78 @@ emailSignUpBtn.onclick = async () => {
   }
 };
 
-saveListBtn.onclick = saveCurrentList;
+// FUNÇÃO SALVAR LISTA
+saveListBtn.onclick = async () => {
+  // ✅ FORA do try
+  const shoppingList = products.filter((p) => p.done);
+
+  try {
+    if (!userDocId) return;
+
+    if (shoppingList.length === 0) {
+      showFeedback("Atenção", "Nenhum produto no carrinho para salvar.");
+      return;
+    }
+
+    const listId = Date.now().toString();
+
+    const listRef = doc(db, "users", userDocId, "saved_lists", listId);
+
+    await setDoc(listRef, {
+      id: listId,
+      createdAt: new Date(),
+      total: shoppingList.reduce((sum, p) => sum + p.price * p.qty, 0),
+    });
+
+    for (const item of shoppingList) {
+      await setDoc(
+        doc(db, "users", userDocId, "saved_lists", listId, "items", item.id),
+        item,
+      );
+    }
+
+    showFeedback("Sucesso", "Lista salva com sucesso!");
+  } catch (e) {
+    console.error(e);
+  }
+
+  const confirmClear = await showConfirm(
+    "Limpar Carrinho",
+    "Deseja limpar o carrinho após salvar a lista?",
+  );
+
+  if (confirmClear) {
+    for (const item of shoppingList) {
+      await deleteDoc(doc(db, "users", userDocId, "cart", item.id));
+    }
+  }
+};
+
 viewListsBtn.onclick = viewSavedLists;
+
+// FUNÇÃO CARREGAR LISTA
+function loadSavedListsRealtime() {
+  if (!userDocId) return;
+
+  const listsRef = query(
+    collection(db, "users", userDocId, "saved_lists"),
+    orderBy("createdAt", "desc"),
+  );
+
+  onSnapshot(listsRef, (snapshot) => {
+    savedLists = snapshot.docs.map((doc) => ({
+      id: doc.id,
+      ...doc.data(),
+    }));
+
+    // 🔥 salva offline
+    localStorage.setItem("savedLists", JSON.stringify(savedLists));
+  });
+}
 
 // Novos elementos para o Modal de Nome
 const nameModal = document.getElementById("nameModal");
-const nameOnlyInput = document.getElementById("nameOnlyInput");
 const saveNameBtn = document.getElementById("saveNameBtn");
-
-// Função para lidar com o nome do usuário
-function checkUserName(user) {
-  const savedName = localStorage.getItem("userName");
-
-  // Se o Firebase não tem nome (comum em login por e-mail) e não salvamos no localStorage
-  if (!user.displayName && !savedName) {
-    nameModal.classList.remove("hidden");
-  } else {
-    // Se já existe, apenas atualiza a interface
-    render();
-  }
-}
 
 // Salvar o nome manualmente
 saveNameBtn.onclick = () => {
@@ -720,11 +1496,13 @@ if ("serviceWorker" in navigator) {
   navigator.serviceWorker.register("/service-worker.js");
 }
 
-let deferredPrompt;
-
+// COntainder de Instalação do app
 const installContainer = document.getElementById("install-container");
 
-if (window.matchMedia("(display-mode: standalone)").matches) {
+if (
+  installContainer &&
+  window.matchMedia("(display-mode: standalone)").matches
+) {
   installContainer.style.display = "none";
 }
 
@@ -739,8 +1517,9 @@ window.addEventListener("beforeinstallprompt", (e) => {
   e.preventDefault();
   deferredPrompt = e;
 
-  // só mostra botão se NÃO estiver instalado
-  installContainer.classList.remove("hidden");
+  if (installContainer) {
+    installContainer.classList.remove("hidden");
+  }
 });
 
 // 👉 Clique no botão abre SEU modal
@@ -762,7 +1541,7 @@ confirmInstall.onclick = async () => {
 
     const choice = await deferredPrompt.userChoice;
 
-    if (choice.outcome === "accepted") {
+    if (choice.outcome === "accepted" && installContainer) {
       installContainer.style.display = "none";
     }
 
@@ -772,28 +1551,51 @@ confirmInstall.onclick = async () => {
 
 // 👉 Quando instalar, some tudo
 window.addEventListener("appinstalled", () => {
-  installContainer.style.display = "none";
+  if (installContainer) {
+    installContainer.style.display = "none";
+  }
 });
 
 function initRealtimeProducts(user) {
-  const q = query(
-    collection(db, "user_products"),
-    where("userId", "==", user.uid),
+  if (!user || !userDocId) return;
+
+  const listRef = query(
+    collection(db, "users", userDocId, "shopping_list"),
+    orderBy("createdAt", "desc"),
   );
 
-  onSnapshot(q, (snapshot) => {
-    const dbProducts = [];
-    snapshot.forEach((doc) => {
-      dbProducts.push({ id: doc.id, ...doc.data() });
-    });
+  const cartRef = query(
+    collection(db, "users", userDocId, "cart"),
+    orderBy("updatedAt", "desc"),
+  );
 
-    // Junta com os produtos que ainda não foram "confirmados" (que estão no localStorage)
-    const allProducts = [...products, ...dbProducts];
+  let shopping = [];
+  let cart = [];
 
-    // Atualiza a tela chamando sua função render original,
-    // mas agora passando os dados do banco
-    renderWithGroups(allProducts);
+  onSnapshot(listRef, (snap) => {
+    shopping = snap.docs.map((doc) => ({
+      id: doc.id,
+      ...doc.data(),
+      done: false,
+    }));
+
+    updateProducts();
   });
+
+  onSnapshot(cartRef, (snap) => {
+    cart = snap.docs.map((doc) => ({
+      id: doc.id,
+      ...doc.data(),
+      done: true,
+    }));
+
+    updateProducts();
+  });
+
+  function updateProducts() {
+    products = [...shopping, ...cart];
+    renderWithGroups(products);
+  }
 }
 
 // INICIALIZAR APP

@@ -38,6 +38,13 @@
       href="IMAGES/Logo-JaMercado-mobile.ico"
       type="image/x-icon"
     />
+
+    <!-- SCRIPT DE ANÚNCIOS GOOGLE ADSENSE -->
+    <script
+      async
+      src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-XXXXXXXX"
+      crossorigin="anonymous"
+    ></script>
   </head>
   <body>
     <!-- ADICIONA O FILTRO DE LÁPIS (EFEITO DE PINTADO À LAPIS) -->
@@ -61,14 +68,65 @@
       </div>
     </header>
 
+    <!-- ANÚNCIO NO TOPO (BANNER) -->
+    <div class="ad-top">
+      <!-- Google AdSense -->
+      <ins
+        class="adsbygoogle"
+        style="display: block"
+        data-ad-client="ca-pub-XXXXXXXX"
+        data-ad-slot="XXXXXXXX"
+        data-ad-format="auto"
+        data-full-width-responsive="true"
+      ></ins>
+    </div>
+    <!-- FIM DO → ANÚNCIO NO TOPO (BANNER) -->
+
     <main>
-      <div class="add-product">
-        <input
-          id="productInput"
-          type="text"
-          placeholder="Adicionar produto..."
-        />
-        <button id="addBtn" type="button">+</button>
+      <div class="add-area">
+        <label>Seção/Categoria:</label>
+        <div class="modal-row">
+          <select id="categorySelect" class="custom-select">
+            <option value="Açougue e Peixaria">
+              Açougue e Peixaria → 🥩🦐
+            </option>
+            <option value="Bebidas">Bebidas → 🥤🧃</option>
+            <option value="Congelados">Congelados → 🍨🫓</option>
+            <option value="Decoração e Outros">
+              Decoração e Outros → 🖼️🪴
+            </option>
+            <option value="Eletrodomésticos e Eletrônicos">
+              Eletrodomésticos e Eletrônicos → 🎛️🎮
+            </option>
+            <option value="Frios e Laticínios">
+              Frios e Laticínios → 🧀🥛
+            </option>
+            <option value="Guloseimas">Guloseimas → 🍫🍪</option>
+            <option value="Higiene Pessoal">Higiene Pessoal → 🧼🧻</option>
+            <option value="Hortifruti">Hortifruti (FLV) → 🥕🥑</option>
+            <option value="Jogos e Brinquedos">
+              Jogos e Brinquedos → ♟️⚽
+            </option>
+            <option value="Limpeza">Limpeza → 🪣🧹</option>
+            <option value="Mercearia Seca">Mercearia Seca → 🫘🧂</option>
+            <option value="Móveis e Utensílios">
+              Móveis e Utensílios → 🛋️🔪
+            </option>
+            <option value="Padaria e Confeitaria">
+              Padaria e Confeitaria → 🥖🍰
+            </option>
+            <option value="Pet Shop">Pet Shop → 🐶🐱</option>
+          </select>
+        </div>
+
+        <div class="add-product">
+          <input
+            id="productInput"
+            type="text"
+            placeholder="Adicionar produto..."
+          />
+          <button id="addBtn" type="button">+</button>
+        </div>
       </div>
 
       <div class="actions">
@@ -84,6 +142,19 @@
       </div>
 
       <ul id="productList"></ul>
+
+      <!-- ANÚNCIO NO MEIO DA LISTA -->
+      <div class="ad-middle">
+        <ins
+          class="adsbygoogle"
+          style="display: block"
+          data-ad-client="ca-pub-XXXXXXXX"
+          data-ad-slot="XXXXXXXX"
+          data-ad-format="auto"
+          data-full-width-responsive="true"
+        ></ins>
+      </div>
+      <!-- FIM DO → ANÚNCIO NO MEIO DA LISTA -->
 
       <!-- QUARKZETTA -->
       <div class="tech-container">
@@ -187,41 +258,56 @@
     </div>
 
     <div id="modal" class="modal hidden">
-      <div class="modal-content" id=" editItems">
-        <label>Seção/Categoria:</label>
-        <div class="modal-row">
-          <select id="categorySelect">
-            <option value="Açougue e Peixaria">Açougue e Peixaria</option>
-            <option value="Bebidas">Bebidas</option>
-            <option value="Congelados">Congelados</option>
-            <option value="Frios e Laticínios">Frios e Laticínios</option>
-            <option value="Higiene Pessoal">Higiene Pessoal</option>
-            <option value="Hortifrúti">Hortifrúti (FLV)</option>
-            <option value="Limpeza">Limpeza</option>
-            <option value="Mercearia">Mercearia Seca</option>
-            <option value="Padaria">Padaria e Confeitaria</option>
-            <option value="Pet Shop">Pet Shop</option>
-            <option value="Outros">Outros / Não Definido</option>
-          </select>
-          <select id="storeSelect"></select>
-        </div>
+      <div class="modal-content" id="editItems">
         <label>Estabelecimento</label>
+        <select id="storeSelect" class="custom-select"></select>
+
+        <select id="storeTypeSelect">
+          <option value="">Tipo</option>
+          <option value="acougue">🥩 Açougue</option>
+          <option value="cosmeticos">💄 Cosméticos</option>
+          <option value="eletronicos">📱 Eletrönicos</option>
+          <option value="farmacia">💊 Farmácia</option>
+          <option value="hortifruti">🥕 Hortifruti</option>
+          <option value="lanchonete">🍔 Lanchonete</option>
+          <option value="loja">🏪 Loja de Móveis</option>
+          <option value="loja">🏪 Loja de Varejo</option>
+          <option value="padaria">🥖 Padaria</option>
+          <option value="petshop">🐶 Pet Shop</option>
+          <option value="pizzaria">🍕 Pizzaria</option>
+          <option value="posto">⛽ Posto de Combustíveis</option>
+          <option value="restaurante">🍽️ Restaurante</option>
+          <option value="roupas">👕 Loja de Roupas</option>
+          <option value="supermercado">🛒 Supermercado</option>
+          <option value="outro">⁉️ Outro</option>
+        </select>
 
         <input
           id="newStoreInput"
           type="text"
-          placeholder="Ou digite um novo..."
+          placeholder="Digite ou Selecione o Estabelecimento"
         />
 
         <h2 id="modalTitle"></h2>
 
+        <div class="unit-selector">
+          <label>
+            <input type="radio" name="unitType" value="UN" id="UN" checked />
+            <span>UN</span>
+          </label>
+          <label>
+            <input type="radio" name="unitType" value="KG" id="KG" />
+            <span>KG</span>
+          </label>
+        </div>
+
         <label>Valor Unitário (R$)</label>
-        <input id="priceInput" type="number" step="0.01" />
+        <input type="text" id="priceInput" inputmode="numeric" />
 
         <label>Quantidade</label>
         <div class="qty">
           <button id="minus" type="button">-</button>
-          <span id="qtyValue" type="button">0</span>
+          <span id="qtyValue" data-placeholder="Ex: 1">1</span>
           <button id="plus" type="button">+</button>
         </div>
 
@@ -235,6 +321,18 @@
         </div>
       </div>
     </div>
+    <!-- FIM DO → ANÚNCIO NO RODAPÉ -->
+    <div class="ad-bottom">
+      <ins
+        class="adsbygoogle"
+        style="display: block"
+        data-ad-client="ca-pub-XXXXXXXX"
+        data-ad-slot="XXXXXXXX"
+        data-ad-format="auto"
+        data-full-width-responsive="true"
+      ></ins>
+    </div>
+    <!-- ANÚNCIO NO RODAPÉ -->
 
     <footer>
       <div class="footer">
@@ -299,6 +397,25 @@
     </div>
     <!-- FIM DO → MODAL DE FEEDBACKS -->
 
+    <!-- MODAL DE CONFIRMAÇÂO LIMPAR CARRINHO -->
+    <div id="confirmModal" class="modal hidden">
+      <div class="modal-content confirm-modal">
+        <h2 id="confirmTitle">Confirmação</h2>
+        <img
+          src="./IMAGES/Logo-JaMercado.png"
+          class="modal-content-img"
+          alt="Logo JáMercado"
+        />
+        <p id="confirmMessage"></p>
+
+        <div class="confirm-actions">
+          <button id="confirmCancel" class="btn-secondary">Não</button>
+          <button id="confirmOk" class="btn-primary">Sim</button>
+        </div>
+      </div>
+    </div>
+    <!-- FIM DO → MODAL DE CONFIRMAÇÂO LIMPAR CARRINHO -->
+
     <!-- MODAL DE LISTAS SALVAS -->
     <div id="listsModal" class="modal hidden">
       <div class="modal-content">
@@ -318,6 +435,20 @@
       </div>
     </div>
     <!-- FIM DO → MODAL DE LISTAS SALVAS -->
+
+    <!-- MODAL DE PAGAMENTOS -->
+    <div id="paymentModal" class="modal hidden">
+      <div class="modal-content">
+        <h2>JáMercado Premium</h2>
+
+        <p>Seu período gratuito terminou</p>
+
+        <p>Apenas R$ 5,99/mês</p>
+
+        <button id="subscribeBtn">Assinar Agora</button>
+      </div>
+    </div>
+    <!-- FIM DO → MODAL DE PAGAMENTOS -->
 
     <!-- MODAL DE NOME -->
     <div id="nameModal" class="modal hidden">
@@ -343,15 +474,27 @@
     </div>
     <!-- FIM DO → MODAL DE NOME -->
 
+    <!-- MODAL CONFIRMAÇÃO DE REMOVER PRODUTO AO CARRINHO -->
+    <div id="confirmRemoveModal" class="modal hidden">
+      <div class="modal-content">
+        <h2>🗑️ Remover item?</h2>
+        <p>Deseja remover este item do carrinho?</p>
+
+        <div class="modal-actions">
+          <button id="cancelRemove" class="danger">Não</button>
+          <button id="confirmRemove" class="success">Sim</button>
+        </div>
+      </div>
+    </div>
+    <!-- FIM DO → MODAL CONFIRMAÇÃO DE REMOVER PRODUTO AO CARRINHO  -->
+
     <script type="module" src="./JS/script.js"></script>
   </body>
 </html>
 
-<!-- CONTINUAR DAQUI → Perfil: CONFIDÊNCIAS PROFUNDAS (Gemini) -->
+<!-- CONTINUAR DAQUI → Perfil: GPT Canal ZueriaTude -->
 <!-- 
-Enviar os arquivos: manifest.json e service-worker.js
-
-OBS: O geminai já os enviou a mim, sem que eu os enviasse a ele. Conferir antes de alterar.
+🔴 O Botão Excluir (do modal) não está mais excluindo os itens da Lista de Compras
  -->
 
 <!-- VERIFICAR A SELEÇÃO DOS ITENS DA LISTA -->
