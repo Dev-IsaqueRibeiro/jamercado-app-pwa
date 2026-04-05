@@ -3,9 +3,20 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <!-- META TAG PARA O SITE/APP APARECER NO GOOGLE -->
+    <meta
+      name="google-site-verification"
+      content="F5fqOlFcmAG_4luIhjDRhCWUyAMdhVI-p09i2Sc_VMo"
+    />
+
     <link rel="stylesheet" href="./CSS/styles.css" />
     <link rel="manifest" href="./manifest.json" />
     <meta name="theme-color" content="#16a34a" />
+
+    <link
+      rel="apple-touch-icon"
+      href="./IMAGES/Logo-JaMercado-mobile.192.png"
+    />
 
     <!-- IMPORT GOOGLE FONTS -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -42,20 +53,41 @@
     <!-- SCRIPT DE ANÚNCIOS GOOGLE ADSENSE -->
     <script
       async
-      src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-XXXXXXXX"
+      src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-7638550898849085"
       crossorigin="anonymous"
     ></script>
   </head>
   <body>
-    <!-- ADICIONA O FILTRO DE LÁPIS (EFEITO DE PINTADO À LAPIS) -->
-    <!-- <svg style="position: absolute; width: 0; height: 0;" width="0" height="0">
-    <defs>
-      <filter id="pencil-texture">
-        <feTurbulence type="fractalNoise" baseFrequency="0.8" numOctaves="3" result="noise" />
-        <feDisplacementMap in="SourceGraphic" in2="noise" scale="2" xChannelSelector="R" yChannelSelector="G" />
-      </filter>
-    </defs> -->
+    <!-- ANÚNCIOS LATERAIS -->
+    <div class="ad-side ad-left">
+      <ins
+        class="adsbygoogle"
+        style="display: block"
+        data-ad-client="ca-pub-7638550898849085"
+        data-ad-slot="XXXXXXXX"
+        data-ad-format="auto"
+        data-full-width-responsive="true"
+        data-ad-layout="auto"
+      ></ins>
+    </div>
+    <script>
+      (adsbygoogle = window.adsbygoogle || []).push({});
+    </script>
 
+    <div class="ad-side ad-right">
+      <ins
+        class="adsbygoogle"
+        style="display: block"
+        data-ad-client="ca-pub-7638550898849085"
+        data-ad-slot="XXXXXXXX"
+        data-ad-format="auto"
+        data-full-width-responsive="true"
+        data-ad-layout="auto"
+      ></ins>
+    </div>
+    <script>
+      (adsbygoogle = window.adsbygoogle || []).push({});
+    </script>
     <header>
       <img src="./IMAGES/Logo-JaMercado.png" alt="Logo JáMercado" />
 
@@ -74,12 +106,16 @@
       <ins
         class="adsbygoogle"
         style="display: block"
-        data-ad-client="ca-pub-XXXXXXXX"
+        data-ad-client="ca-pub-7638550898849085"
         data-ad-slot="XXXXXXXX"
         data-ad-format="auto"
         data-full-width-responsive="true"
+        data-ad-layout="auto"
       ></ins>
     </div>
+    <script>
+      (adsbygoogle = window.adsbygoogle || []).push({});
+    </script>
     <!-- FIM DO → ANÚNCIO NO TOPO (BANNER) -->
 
     <main>
@@ -148,10 +184,11 @@
         <ins
           class="adsbygoogle"
           style="display: block"
-          data-ad-client="ca-pub-XXXXXXXX"
+          data-ad-client="ca-pub-7638550898849085"
           data-ad-slot="XXXXXXXX"
           data-ad-format="auto"
           data-full-width-responsive="true"
+          data-ad-layout="auto"
         ></ins>
       </div>
       <!-- FIM DO → ANÚNCIO NO MEIO DA LISTA -->
@@ -207,12 +244,21 @@
             <strong id="dev">&lt Dev</strong><strong id="code">Club &gt</strong>
           </p>
           <a
-            href="https://landing-page-devclub2026.vercel.app/"
+            href="https://go.hotmart.com/R105160562L"
             target="_blank"
             class="btn-3d-dev-club"
             >Inscrever-se</a
           >
         </div>
+      </div>
+      <script>
+        (adsbygoogle = window.adsbygoogle || []).push({});
+      </script>
+
+      <div class="privacy-policy">
+        <a href="./privacy.html" target="_blank" class="privacy-link">
+          Política de Privacidade
+        </a>
       </div>
 
       <!-- NOTE CREDITS FOOTER -->
@@ -240,14 +286,18 @@
 
         <div class="divider">ou usar seu e-mail</div>
 
-        <input
-          type="email"
-          id="emailInput"
-          placeholder="Seu e-mail (Hotmail, Outlook...)"
-        />
+        <form id="loginForm">
+          <input type="email" id="emailInput" placeholder="Seu e-mail" />
 
-        <!-- <input type="text" id="nameInput" placeholder="Seu nome ou apelido" /> -->
-        <input type="password" id="passwordInput" placeholder="Sua senha" />
+          <input type="text" id="nameInput" placeholder="Seu nome ou apelido" />
+
+          <input
+            type="password"
+            id="passwordInput"
+            placeholder="Sua senha"
+            autocomplete="current-password"
+          />
+        </form>
 
         <div class="modal-actions-column">
           <button id="emailLoginBtn" class="success">Entrar</button>
@@ -326,12 +376,16 @@
       <ins
         class="adsbygoogle"
         style="display: block"
-        data-ad-client="ca-pub-XXXXXXXX"
+        data-ad-client="ca-pub-7638550898849085"
         data-ad-slot="XXXXXXXX"
         data-ad-format="auto"
         data-full-width-responsive="true"
+        data-ad-layout="auto"
       ></ins>
     </div>
+    <script>
+      (adsbygoogle = window.adsbygoogle || []).push({});
+    </script>
     <!-- ANÚNCIO NO RODAPÉ -->
 
     <footer>
@@ -361,6 +415,16 @@
       </button>
     </div>
     <!-- FIM DO → BOTÃO DE INSTALAÇÃO -->
+
+    <!-- BOTÃO DICAS DE ECONOMIA -->
+    <div id="tips-container">
+      <button id="openTips" class="btn-tips">
+        <span class="icon-left" data-default="💸" data-hover="🛍️"></span>
+        COMO ECONOMIZAR
+        <span class="icon-right" data-default="🔝" data-hover="💡"></span>
+      </button>
+    </div>
+    <!-- FIM DO → BOTÃO DICAS DE ECONOMIA -->
 
     <!-- MODAL INSTALAR APP -->
     <div id="installModal" class="modal hidden">
@@ -427,7 +491,9 @@
           alt="Logo JáMercado"
         />
 
-        <div id="listsContainer"></div>
+        <div id="savedListsWrapper">
+          <div id="listsContainer"></div>
+        </div>
 
         <div class="modal-actions">
           <button id="closeListsModal" class="danger">Fechar</button>
@@ -488,13 +554,103 @@
     </div>
     <!-- FIM DO → MODAL CONFIRMAÇÃO DE REMOVER PRODUTO AO CARRINHO  -->
 
+    <!-- MODAL DICAS DE ECONOMIA -->
+    <div id="tipsModal" class="modal hidden">
+      <div class="modal-content tips-modal">
+        <!-- LOGO -->
+        <img
+          src="./IMAGES/Logo-JaMercado.png"
+          class="modal-content-img"
+          alt="Logo JáMercado"
+        />
+
+        <!-- CONTEÚDO DINÂMICO -->
+        <div id="tipsContent"></div>
+
+        <!-- ANÚNCIO TOPO -->
+        <div class="ad-middle">
+          <ins
+            class="adsbygoogle"
+            style="display: block"
+            data-ad-client="ca-pub-7638550898849085"
+            data-ad-slot="TOP_SLOT"
+            data-ad-format="auto"
+            data-full-width-responsive="true"
+          >
+          </ins>
+        </div>
+        <script>
+          (adsbygoogle = window.adsbygoogle || []).push({});
+        </script>
+
+        <!-- ANÚNCIO MEIO -->
+        <div class="ad-middle">
+          <ins
+            class="adsbygoogle"
+            style="display: block"
+            data-ad-client="ca-pub-7638550898849085"
+            data-ad-slot="MID_SLOT"
+            data-ad-format="auto"
+            data-full-width-responsive="true"
+          >
+          </ins>
+        </div>
+        <script>
+          (adsbygoogle = window.adsbygoogle || []).push({});
+        </script>
+
+        <!-- ANÚNCIO FINAL -->
+        <div class="ad-middle">
+          <ins
+            class="adsbygoogle"
+            style="display: block"
+            data-ad-client="ca-pub-7638550898849085"
+            data-ad-slot="BOT_SLOT"
+            data-ad-format="auto"
+            data-full-width-responsive="true"
+          >
+          </ins>
+        </div>
+        <script>
+          (adsbygoogle = window.adsbygoogle || []).push({});
+        </script>
+
+        <div class="modal-actions">
+          <button id="closeTips" class="danger">Fechar</button>
+        </div>
+      </div>
+    </div>
+    <!-- FIM DO → MODAL DICAS DE ECONOMIA -->
+
     <script type="module" src="./JS/script.js"></script>
   </body>
 </html>
 
-<!-- CONTINUAR DAQUI → Perfil: GPT Canal ZueriaTude -->
+<!-- CONTINUAR DAQUI → Perfil: GPT Canal Família Kadosh-->
 <!-- 
-🔴 O Botão Excluir (do modal) não está mais excluindo os itens da Lista de Compras
+🔴 💥 ✅ ✔️ O QUE ESTÁ PERFEITO
+🔴 Depois, Anúncios Google
  -->
 
 <!-- VERIFICAR A SELEÇÃO DOS ITENS DA LISTA -->
+
+<!-- DEPLOY GITHUB -->
+<!-- 
+git add .
+git commit -m "feat: atualização das funcionalidades e correção de bugs"
+git push origin main
+
+ -->
+<!-- NÃO SUBIR!!!
+  .env.local
+  node_modules/
+  .firebase/
+  .hosting..cache
+ -->
+
+<!-- DEPLOY FIREBASE -->
+<!-- 
+ firebase login
+ firebase use --add
+ firebase deploy
+  -->

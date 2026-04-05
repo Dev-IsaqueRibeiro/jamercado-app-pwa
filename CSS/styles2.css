@@ -1,0 +1,111 @@
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: "DM Sans", sans-serif;
+  /* Usando um degradê radial para criar o efeito de "luz central" */
+  background: radial-gradient(
+    circle at center,
+    /* 1. Centro: Roxo muito claro, quase branco (foco principal) */ #ffffff 0%,
+
+    /* 2. Transição: Roxo suave */ #ececec 40%,
+
+    /* 3. Bordas: Roxo mais escuro (cor do rodapé/transição) */ #cacaca 100%
+  );
+  color: #0f172a;
+  line-height: 1.6;
+  padding: 20px;
+}
+
+.container {
+  max-width: 900px;
+  margin: auto;
+}
+
+header {
+  text-align: center;
+  margin-bottom: 30px;
+}
+
+header img {
+  width: 90px;
+  margin-bottom: 10px;
+}
+
+header h1 {
+  font-size: 28px;
+  color: #0f172a;
+}
+
+.fist-name {
+  color: #00663a;
+  font-weight: bold;
+}
+
+.last-name {
+  color: #fc5800;
+  font-weight: bold;
+}
+
+.card {
+  background: #f1f1f1;
+  border-radius: 10px;
+  padding: 20px;
+  margin-bottom: 20px;
+  backdrop-filter: blur(10px);
+  box-shadow:
+    inset 0 0 20px #0f172a60,
+    0 5px 15px rgba(0, 0, 0, 0.5);
+  transition: all 0.3s ease-in-out;
+}
+
+.card:hover {
+  transform: translateY(-2px);
+}
+
+.card h2 {
+  color: #fc5800;
+  margin-bottom: 10px;
+  font-size: 20px;
+}
+
+.item-number {
+  color: #00663a;
+}
+
+.highlight {
+  background: rgba(34, 197, 94, 0.1);
+  border-left: 4px solid #099b5b;
+  padding: 12px;
+  border-radius: 8px;
+  margin-top: 12px;
+  box-shadow: 0 0 7px #0000005b;
+}
+li {
+  list-style-type: none;
+}
+
+.dot {
+  color: #fc5800;
+  font-size: 20px;
+  margin-right: 5px;
+}
+footer {
+  text-align: center;
+  margin-top: 40px;
+  font-size: 14px;
+  color: #000;
+  opacity: 0.5;
+}
+
+a {
+  color: #22c55e;
+  text-decoration: none;
+}
+
+a:hover {
+  text-decoration: underline;
+}
