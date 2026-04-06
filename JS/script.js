@@ -5,6 +5,8 @@ import { auth, db, googleProvider } from "../lib/firebase.js";
 // Importando Auth via link direto (mais seguro para o navegador)
 import {
   signInWithPopup,
+  signInWithRedirect,
+  getRedirectResult, // Captura o resultado após o redirect
   onAuthStateChanged,
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
@@ -25,6 +27,19 @@ import {
   onSnapshot,
   orderBy,
 } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+
+// 🔥 CAPTURA LOGIN VIA REDIRECT (MOBILE)
+(async () => {
+  try {
+    const result = await getRedirectResult(auth);
+
+    if (result && result.user) {
+      console.log("Login via redirect concluído:", result.user);
+    }
+  } catch (error) {
+    console.error("Erro no redirect:", error);
+  }
+})();
 
 const userLocale = navigator.language || "pt-BR";
 const currencyCode = userLocale.startsWith("pt") ? "BRL" : "USD";
@@ -107,6 +122,8 @@ const confirmMessage = document.getElementById("confirmMessage");
 const confirmOk = document.getElementById("confirmOk");
 const confirmCancel = document.getElementById("confirmCancel");
 
+const tipsContent = document.getElementById("tipsContent");
+
 // 🔥 Fechar Modal ao clicar fora
 confirmRemoveModal.onclick = (e) => {
   if (e.target === confirmRemoveModal) {
@@ -140,7 +157,6 @@ if (priceInput) {
 // ==========================
 // FORMATAÇÃO EM TEMPO REAL
 // ==========================
-
 // 1. Capitalize nos inputs de texto
 [productInput, newStoreInput, nameOnlyInput].forEach((input) => {
   if (input) {
@@ -185,8 +201,8 @@ function getUserName(user) {
   const localName = localStorage.getItem("userName");
 
   return (
+    localName || // 🔥 prioridade correta
     user.displayName?.split(" ")[0] ||
-    localName ||
     user.email?.split("@")[0] ||
     "Usuário"
   );
@@ -213,7 +229,14 @@ onAuthStateChanged(auth, async (user) => {
       const docSnap = querySnapshot.docs[0];
 
       userNumber = docSnap.data().sequence;
-      userDocId = docSnap.id; // 🔥 SALVA GLOBAL
+      userDocId = docSnap.id;
+
+      // 🔥 NOVO: pega nome salvo
+      const dbName = docSnap.data().name;
+
+      if (dbName) {
+        localStorage.setItem("userName", dbName);
+      }
     } else {
       // 🆕 NOVO USUÁRIO
       userNumber = await generateNextSequence();
@@ -223,7 +246,7 @@ onAuthStateChanged(auth, async (user) => {
       const formattedNum = String(userNumber).padStart(3, "0");
       const safeName = nameToSave.toLowerCase().replace(/\s+/g, "-");
 
-      userDocId = `${safeName}-${formattedNum}`; // 🔥 GLOBAL
+      userDocId = `${safeName}-${formattedNum}-${Date.now()}`; // 🔥 GLOBAL
 
       const userRef = doc(db, "users", userDocId);
 
@@ -258,7 +281,9 @@ onAuthStateChanged(auth, async (user) => {
     await checkSubscription();
 
     // Se for login por e-mail e não tiver nome, abre o modal
-    if (!user.displayName && !localName) {
+    const localName = localStorage.getItem("userName");
+
+    if (!localName) {
       document.getElementById("nameModal").classList.remove("hidden");
     }
   } else {
@@ -329,6 +354,7 @@ async function generateNextSequence() {
 // FUNÇÃO RENDER (O CÉREBRO)
 function render() {
   productList.innerHTML = "";
+  const fragment = document.createDocumentFragment();
   let total = 0;
   let items = 0;
 
@@ -407,6 +433,8 @@ function render() {
   emptyState.style.display = products.length === 0 ? "block" : "none";
 
   productList.style.display = products.length ? "block" : "none";
+
+  productList.appendChild(fragment);
 }
 // FIM → FUNÇÃO RENDER
 
@@ -467,13 +495,35 @@ function renderSavedLists() {
     );
 
     div.innerHTML = `
-  <h3>
-    🗓️ ${date.toLocaleDateString()}
-    - ${formatCurrency(list.total)}
-  </h3>
-`;
+      <h3>
+        🗓️ ${date.toLocaleDateString()} - ${formatCurrency(list.total)}
+      </h3>
 
-    div.onclick = () => openSavedList(list.id);
+      <div class="saved-preview">
+        ${
+          list.items?.length
+            ? `<p>${list.items.length} itens</p>`
+            : "<p>Sem itens</p>"
+        }
+
+        <button class="view-list-btn" data-id="${list.id}">
+          📄 Ver Lista
+        </button>
+      </div>
+    `;
+
+    // 🚀 BOA PRÁTICA (delegação correta)
+    div.addEventListener("click", (e) => {
+      const btn = e.target.closest(".view-list-btn");
+
+      if (btn) {
+        e.stopPropagation();
+        openSavedList(list.id);
+        return;
+      }
+
+      openSavedList(list.id);
+    });
 
     listsContainer.appendChild(div);
   });
@@ -485,16 +535,21 @@ function renderSavedLists() {
 // FUNÇÃO ABRIR LISTA SALVA
 async function openSavedList(listId) {
   try {
-    const snapshot = await getDocs(
-      collection(db, "users", userDocId, "saved_lists", listId, "items"),
-    );
+    const list = savedLists.find((l) => l.id === listId);
 
-    const items = snapshot.docs.map((doc) => doc.data());
+    if (!list || !list.items) {
+      console.error("Lista sem itens");
+      return;
+    }
 
-    renderSavedListItems(items);
+    renderSavedListItems(list.items);
   } catch (e) {
     console.error("Erro ao abrir lista:", e);
   }
+
+  setTimeout(() => {
+    observeAds();
+  }, 300);
 }
 // FIM DA → FUNÇÃO ABRIR LISTA SALVA
 
@@ -503,52 +558,93 @@ function renderSavedListItems(items) {
   listsContainer.innerHTML = "";
 
   const grouped = {};
+  let totalGeral = 0;
+  let totalItens = 0;
 
+  // 🔥 AGRUPAR POR ESTABELECIMENTO
   items.forEach((p) => {
     const store = p.store || "Sem Estabelecimento";
-    const category = p.category || "Outros";
 
-    if (!grouped[store]) grouped[store] = {};
-    if (!grouped[store][category]) grouped[store][category] = [];
-
-    grouped[store][category].push(p);
+    if (!grouped[store]) grouped[store] = [];
+    grouped[store].push(p);
   });
 
   Object.keys(grouped)
     .sort((a, b) => a.localeCompare(b, "pt-BR", { sensitivity: "base" }))
     .forEach((store) => {
+      const storeItems = grouped[store];
+
+      // 🔥 TÍTULO DO MERCADO
       const storeTitle = document.createElement("h3");
       storeTitle.className = "store-title-main";
-      const firstItem = grouped[store][Object.keys(grouped[store])[0]][0];
-      const icon = getStoreIcon(firstItem.storeType);
 
+      const icon = getStoreIcon(storeItems[0].storeType);
       storeTitle.textContent = `${icon} ${store}`;
 
       listsContainer.appendChild(storeTitle);
 
-      Object.keys(grouped[store]).forEach((category) => {
-        const catTitle = document.createElement("h4");
-        catTitle.className = "category-title-sub";
-        catTitle.textContent = category;
+      // 🔥 HEADER (IGUAL AO CARRINHO)
+      const header = document.createElement("div");
+      header.className = "receipt-grid2 cart-header2";
 
-        listsContainer.appendChild(catTitle);
+      header.innerHTML = `
+        <span class="saved-col-desc">DESCRIÇÃO</span>
+        <span class="saved-col-qty">QTD</span>
+        <span class="saved-col-unit">UN</span>
+        <span class="saved-col-price">VL</span>
+        <span class="saved-col-total">TOTAL</span>
+      `;
 
-        grouped[store][category].forEach((p) => {
+      listsContainer.appendChild(header);
+
+      let storeTotal = 0;
+
+      // 🔥 ITENS
+      storeItems
+        .sort((a, b) => a.name.localeCompare(b.name, "pt-BR"))
+        .forEach((p) => {
+          const totalItem = p.price * p.qty;
+
+          totalGeral += totalItem;
+          storeTotal += totalItem;
+          totalItens++;
+
           const row = document.createElement("div");
-          row.className = "cart-row";
+          row.className = "cart-row2";
 
           row.innerHTML = `
-          <div class="col-desc">${p.name}</div>
-          <div class="col-qty">${p.qty}</div>
-          <div class="col-unit">${p.unit || "UN"}</div>
-          <div class="col-price">${formatCurrency(p.price)}</div>
-          <div class="col-total">${formatCurrency(p.price * p.qty)}</div>
-        `;
+            <span class="saved-col-desc"><strong>${p.name}</strong></span>
+            <span class="saved-col-qty">${p.qty}</span>
+            <span class="saved-col-unit">${p.unit || "UN"}</span>
+            <span class="saved-col-price">${formatCurrency(p.price)}</span>
+            <span class="saved-col-total">${formatCurrency(totalItem)}</span>
+          `;
 
           listsContainer.appendChild(row);
         });
-      });
+
+      // 🔥 SUBTOTAL POR MERCADO
+      const subtotal = document.createElement("div");
+      subtotal.className = "store-subtotal";
+
+      subtotal.innerHTML = `
+        <strong>Subtotal (${store}): ${formatCurrency(storeTotal)}</strong>
+      `;
+
+      listsContainer.appendChild(subtotal);
     });
+
+  // 🔥 TOTAL FINAL (CUPOM)
+  const totalBlock = document.createElement("div");
+  totalBlock.className = "saved-final";
+
+  totalBlock.innerHTML = `
+    <hr>
+    <p>Total de Produtos: <span>"${totalItens} Itens"</span></p>
+    <h2>Total Geral: ${formatCurrency(totalGeral)}</h2>
+  `;
+
+  listsContainer.appendChild(totalBlock);
 }
 // FIM DA → FUNÇÃO RENDERIZAR ITENS DA LISTA
 
@@ -585,9 +681,12 @@ feedbackOk.onclick = () => {
   feedbackModal.classList.add("hidden");
 };
 
-closeListsModal.onclick = () => {
-  listsModal.classList.add("hidden");
-};
+if (closeListsModal) {
+  closeListsModal.addEventListener("click", () => {
+    const modal = document.getElementById("listsModal");
+    if (modal) modal.classList.add("hidden");
+  });
+}
 
 // Função para transformar a primeira letra de cada palavra em Maiúscula
 function capitalizeWords(text) {
@@ -604,6 +703,123 @@ function normalizeText(str) {
     .replace(/[\u0300-\u036f]/g, "") // remove acentos
     .toLowerCase() // padroniza
     .trim();
+}
+
+function loadTipsContent() {
+  if (!tipsContent) return;
+
+  tipsContent.innerHTML = `
+    <h2 class="tips-title">💰 Dicas 💰<br /> de Economia </h2>
+
+    <div class="tip-item">
+      <h3>🛒 Compare Preços Entre Mercados Antes de Comprar</h3>
+      <p>
+        🧡 Nem sempre o mercado mais próximo é o mais barato. Pequenas diferenças de preço
+        em vários itens podem gerar uma economia significativa no final da compra.
+      </p>
+      <p>
+        ⭐ <strong>Exemplo:</strong> Um produto pode custar <b>R$ 12,90</b> em um mercado e <b>R$ 12,50</b> em outro.
+        Se você comprar 10 itens com essa diferença, já economiza <b>R$ 12,00</b> apenas com esse produto.
+      </p>
+      <p>
+        ✅ Sempre que possível, compare preços entre mercados da sua região ou utilize seu histórico
+        de compras para identificar onde cada item costuma ser mais barato.
+      </p>
+    </div>
+
+    <div class="tip-item">
+      <h3>📅 Evite Comprar por Impulso — Vá com uma Lista Definida</h3>
+      <p>
+        🧡 Ir ao mercado sem uma lista clara aumenta muito as chances de comprar itens desnecessários.
+        Produtos expostos estrategicamente são feitos para estimular decisões impulsivas.
+      </p>
+      <p>
+        ⭐ <strong>Exemplo:</strong> Você vai comprar pão e leite, mas acaba levando chocolates,
+        refrigerantes e snacks que não estavam planejados.
+      </p>
+      <p>
+        ✅ Ter uma lista definida ajuda a manter o foco, evita desperdícios e mantém seu orçamento sob controle.
+      </p>
+    </div>
+
+    <div class="tip-item">
+      <h3>🏷️ Aproveite Promoções e Descontos Sazonais</h3>
+      <p>
+        🧡 Muitos produtos entram em promoção em períodos específicos, como datas comemorativas
+        ou mudanças de estoque.
+      </p>
+      <p>
+        ⭐ <strong>Exemplo:</strong> Carnes podem ficar mais baratas em determinados dias da semana,
+        e itens como chocolates e ovos de páscoa têm grandes descontos após a Páscoa.
+      </p>
+      <p>
+        ✅ Aproveitar essas oportunidades pode reduzir bastante o valor total da sua compra,
+        principalmente em produtos de maior custo.
+      </p>
+    </div>
+
+    <div class="tip-item">
+      <h3>🥦 Prefira produtos da estação (são mais baratos)</h3>
+      <p>
+        🧡 Frutas, verduras e legumes da estação são mais baratos porque estão em maior oferta.
+        Além disso, costumam ser mais frescos e saborosos.
+      </p>
+      <p>
+        ⭐ <strong>Exemplo:</strong> Morango fora de época pode custar o dobro ou até o triplo do preço,
+        enquanto na safra ele fica muito mais acessível.
+      </p>
+      <p>
+        ✅ Adaptar sua alimentação à sazonalidade é uma das formas mais simples de economizar
+        sem abrir mão da qualidade.
+      </p>
+    </div>
+
+    <div class="tip-item">
+      <h3>📦 Compre em Maior Quantidade de Itens Não Perecíveis</h3>
+      <p>
+        🧡 Produtos com longa duração, como arroz, feijão, papel higiênico e produtos de limpeza,
+        costumam ter preços melhores quando comprados em maior quantidade.
+      </p>
+      <p>
+        ⭐ <strong>Exemplo:</strong> Um pacote individual pode custar mais caro do que um pacote maior
+        ou um combo promocional.
+      </p>
+      <p>
+        ✅ Só tome cuidado para não exagerar e acabar comprometendo seu orçamento no curto prazo.
+      </p>
+    </div>
+
+    <div class="tip-item">
+      <h3>💳 Evite Parcelamentos Desnecessários</h3>
+      <p>
+        🧡 Parcelar compras pode dar uma falsa sensação de economia, mas no longo prazo pode
+        comprometer sua renda mensal.
+      </p>
+      <p>
+        ⭐ <strong>Exemplo:</strong> Várias pequenas parcelas acumuladas podem virar um valor alto
+        no final do mês.
+      </p>
+      <p>
+        ✅ Sempre que possível, priorize pagamentos à vista e evite assumir compromissos financeiros
+        que não são realmente necessários.
+      </p>
+    </div>
+
+    <div class="tip-item">
+      <h3>📉 Acompanhe o Total do Carrinho em Tempo Real</h3>
+      <p>
+        🧡 Saber quanto você já está gastando durante a compra evita surpresas no caixa. E isso você consegue fazer com segurança, aqui no App JáMercado!
+      </p>
+      <p>
+        ⭐ <strong>Exemplo:</strong> Ao adicionar produtos e ver o total subir, você pode decidir
+        remover itens menos importantes antes de finalizar.
+      </p>
+      <p>
+        ✅ Esse controle em tempo real é uma das formas mais eficientes de manter o orçamento
+        sob controle e tomar decisões mais conscientes.
+      </p>
+    </div>
+  `;
 }
 
 // ==========================
@@ -754,7 +970,8 @@ function showSuggestions(list) {
     container.appendChild(div);
   });
 
-  document.querySelector(".add-product").appendChild(container);
+  const wrapper = document.querySelector(".add-product");
+  if (wrapper) wrapper.appendChild(container);
 }
 // FIM DA → FUNÇÃO DE SUGESTÕES
 
@@ -800,6 +1017,9 @@ function openModal(p) {
 
   storeSelect.value = p.store || "";
 
+  // ✅ LIMPA o input manual para não herdar valor antigo
+  newStoreInput.value = "";
+
   document.getElementById("categorySelect").value = p.category || "Outros";
 
   // Define UN como padrão
@@ -809,6 +1029,10 @@ function openModal(p) {
   modal.classList.remove("hidden");
   confirmBtn.textContent = "Confirmar";
   deleteBtn.textContent = "Excluir";
+
+  setTimeout(() => {
+    observeAds();
+  }, 300);
 }
 // FIM DA → FUNÇÃO ABRIR MODAL
 
@@ -841,6 +1065,9 @@ function openCartModal(p) {
 
   storeSelect.value = p.store || "";
 
+  // ✅ LIMPA o input manual para não herdar valor antigo
+  newStoreInput.value = "";
+
   document.getElementById("categorySelect").value = p.category || "Outros";
 
   // Seleciona unidade
@@ -853,6 +1080,10 @@ function openCartModal(p) {
   modal.classList.remove("hidden");
   confirmBtn.textContent = "Alterar";
   deleteBtn.textContent = "Remover";
+
+  setTimeout(() => {
+    observeAds();
+  }, 300);
 }
 // FIM DA → FUNÇÃO ABRIR MODAL CARRINHO
 
@@ -963,14 +1194,14 @@ function renderGrouped(items, isCart, fragment) {
 
           if (isCart) {
             const header = document.createElement("div");
-            header.className = "cart-grid cart-header";
+            header.className = "receipt-grid cart-header";
 
             header.innerHTML = `
-            <span class="col-desc">Descrição</span>
-            <span class="col-qty">Qt</span>
-            <span class="col-unit">Un</span>
-            <span class="col-price">Vlr</span>
-            <span class="col-total">Tot</span>
+            <span class="col-desc">DESCRIÇÃO</span>
+            <span class="col-qty">QTD</span>
+            <span class="col-unit">UN</span>
+            <span class="col-price">VL</span>
+            <span class="col-total">TOTAL</span>
           `;
 
             fragment.appendChild(header);
@@ -1185,6 +1416,12 @@ confirmBtn.onclick = async () => {
   const selectedStore = storeSelect.value;
   let finalStore = newStore || selectedStore || "Sem mercado";
 
+  if (newStore && !stores.includes(newStore)) {
+    stores.push(newStore);
+    saveData();
+    renderStores();
+  }
+
   const category = document.getElementById("categorySelect").value;
 
   const storeType = document.getElementById("storeTypeSelect").value;
@@ -1308,7 +1545,10 @@ deleteBtn.onclick = async () => {
 
 // LIMPAR LISTA
 clearBtn.onclick = async () => {
-  if (!userDocId) return;
+  if (!userDocId) {
+    showFeedback("Atenção", "Você precisa estar logado!");
+    return;
+  }
 
   const confirmClear = await showConfirm(
     "Limpar Lista",
@@ -1331,6 +1571,7 @@ clearBtn.onclick = async () => {
     for (const docSnap of cartSnap.docs) {
       await deleteDoc(docSnap.ref);
     }
+    showFeedback("Sucesso", "Lista limpa com sucesso!");
   } catch (e) {
     console.error(e);
   }
@@ -1345,10 +1586,17 @@ document.getElementById("closeLoginModal").onclick = () => {
 
 // Login com Google (dentro do modal)
 googleLoginBtn.onclick = async () => {
+  const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+
   try {
-    await signInWithPopup(auth, googleProvider);
-    loginModal.classList.add("hidden");
-    showFeedback("Sucesso", "Login realizado com sucesso!");
+    if (isMobile) {
+      // No celular, ele sai da página e volta
+      await signInWithRedirect(auth, googleProvider);
+    } else {
+      // No PC, continua o popup
+      await signInWithPopup(auth, googleProvider);
+      loginModal.classList.add("hidden");
+    }
   } catch (error) {
     console.error("Erro no login Google:", error);
     showFeedback("Erro", "Falha ao logar com Google.");
@@ -1373,11 +1621,19 @@ emailLoginBtn.onclick = async () => {
 // Cadastro de novo e-mail
 emailSignUpBtn.onclick = async () => {
   try {
-    await createUserWithEmailAndPassword(
+    const name = document.getElementById("nameInput").value.trim();
+
+    const userCredential = await createUserWithEmailAndPassword(
       auth,
       emailInput.value,
       passwordInput.value,
     );
+
+    // 🔥 NOVO: salva nome digitado
+    if (name) {
+      localStorage.setItem("userName", name);
+    }
+
     showFeedback("Sucesso", "Conta criada com sucesso!");
     loginModal.classList.add("hidden");
   } catch (error) {
@@ -1391,11 +1647,19 @@ emailSignUpBtn.onclick = async () => {
 
 // FUNÇÃO SALVAR LISTA
 saveListBtn.onclick = async () => {
-  // ✅ FORA do try
-  const shoppingList = products.filter((p) => p.done);
+  if (!userDocId) {
+    showFeedback("Atenção", "Você precisa estar logado!");
+    return;
+  }
 
   try {
-    if (!userDocId) return;
+    // 🔥 BUSCA DIRETO DO FIREBASE (CORRETO)
+    const cartSnap = await getDocs(collection(db, "users", userDocId, "cart"));
+
+    const shoppingList = cartSnap.docs.map((doc) => ({
+      id: doc.id,
+      ...doc.data(),
+    }));
 
     if (shoppingList.length === 0) {
       showFeedback("Atenção", "Nenhum produto no carrinho para salvar.");
@@ -1404,34 +1668,56 @@ saveListBtn.onclick = async () => {
 
     const listId = Date.now().toString();
 
+    // 🔥 CALCULOS DO CUPOM
+    let totalGeral = 0;
+    let totalItens = 0;
+
+    const itemsFormatted = shoppingList.map((item) => {
+      const totalItem = item.price * item.qty;
+
+      totalGeral += totalItem;
+      totalItens += 1;
+
+      return {
+        name: item.name,
+        qty: item.qty,
+        unit: item.unit || "UN",
+        price: item.price,
+        total: totalItem, // 🔥 importante
+        store: item.store,
+        category: item.category,
+        storeType: item.storeType,
+      };
+    });
+
     const listRef = doc(db, "users", userDocId, "saved_lists", listId);
 
     await setDoc(listRef, {
       id: listId,
       createdAt: new Date(),
-      total: shoppingList.reduce((sum, p) => sum + p.price * p.qty, 0),
+      total: totalGeral,
+      totalItens: totalItens,
+      items: itemsFormatted,
     });
 
-    for (const item of shoppingList) {
-      await setDoc(
-        doc(db, "users", userDocId, "saved_lists", listId, "items", item.id),
-        item,
-      );
-    }
-
-    showFeedback("Sucesso", "Lista salva com sucesso!");
+    showFeedback("Sucesso", "Lista salva como cupom com sucesso!");
   } catch (e) {
     console.error(e);
+    showFeedback("Erro", "Falha ao salvar lista.");
+    return;
   }
 
+  // 🔥 CONFIRMA LIMPAR
   const confirmClear = await showConfirm(
     "Limpar Carrinho",
     "Deseja limpar o carrinho após salvar a lista?",
   );
 
   if (confirmClear) {
-    for (const item of shoppingList) {
-      await deleteDoc(doc(db, "users", userDocId, "cart", item.id));
+    const cartSnap = await getDocs(collection(db, "users", userDocId, "cart"));
+
+    for (const docSnap of cartSnap.docs) {
+      await deleteDoc(docSnap.ref);
     }
   }
 };
@@ -1463,14 +1749,24 @@ const nameModal = document.getElementById("nameModal");
 const saveNameBtn = document.getElementById("saveNameBtn");
 
 // Salvar o nome manualmente
-saveNameBtn.onclick = () => {
+saveNameBtn.onclick = async () => {
   const name = nameOnlyInput.value.trim();
-  if (name) {
-    localStorage.setItem("userName", name);
-    nameModal.classList.add("hidden");
-    showFeedback("Sucesso", `Prazer em te conhecer, ${name}!`);
-    render(); // Re-renderiza para atualizar o "Olá, Nome"
+  if (!name) return;
+
+  localStorage.setItem("userName", name);
+
+  // 🔥 NOVO: salva no Firestore
+  if (userDocId) {
+    await updateDoc(doc(db, "users", userDocId), {
+      name: name,
+    });
   }
+
+  nameModal.classList.add("hidden");
+
+  showFeedback("Sucesso", `Prazer em te conhecer, ${name}!`);
+
+  location.reload(); // opcional, mas garante atualização
 };
 
 // FECHAR MODAL AO CLICAR FORA
@@ -1486,11 +1782,15 @@ feedbackModal.onclick = (e) => {
   }
 };
 
-listsModal.onclick = (e) => {
-  if (e.target === listsModal) {
-    listsModal.classList.add("hidden");
+document.addEventListener("click", (e) => {
+  const modal = document.getElementById("listsModal");
+
+  if (!modal || modal.classList.contains("hidden")) return;
+
+  if (e.target === modal) {
+    modal.classList.add("hidden");
   }
-};
+});
 
 if ("serviceWorker" in navigator) {
   navigator.serviceWorker.register("/service-worker.js");
@@ -1556,6 +1856,9 @@ window.addEventListener("appinstalled", () => {
   }
 });
 
+let unsubscribeShopping = null;
+let unsubscribeCart = null;
+
 function initRealtimeProducts(user) {
   if (!user || !userDocId) return;
 
@@ -1572,7 +1875,8 @@ function initRealtimeProducts(user) {
   let shopping = [];
   let cart = [];
 
-  onSnapshot(listRef, (snap) => {
+  if (unsubscribeShopping) unsubscribeShopping();
+  unsubscribeShopping = onSnapshot(listRef, (snap) => {
     shopping = snap.docs.map((doc) => ({
       id: doc.id,
       ...doc.data(),
@@ -1582,7 +1886,8 @@ function initRealtimeProducts(user) {
     updateProducts();
   });
 
-  onSnapshot(cartRef, (snap) => {
+  if (unsubscribeCart) unsubscribeCart();
+  unsubscribeCart = onSnapshot(cartRef, (snap) => {
     cart = snap.docs.map((doc) => ({
       id: doc.id,
       ...doc.data(),
@@ -1595,8 +1900,101 @@ function initRealtimeProducts(user) {
   function updateProducts() {
     products = [...shopping, ...cart];
     renderWithGroups(products);
+
+    // 🔥 RECARREGA ADS APÓS ATUALIZAÇÃO DO DOM
+    setTimeout(() => {
+      observeAds();
+    }, 300);
   }
 }
 
-// INICIALIZAR APP
-// render();
+// ===============================
+// ADSENSE + DETECÇÃO PWA
+// ===============================
+window.addEventListener("load", () => {
+  const isStandalone = window.matchMedia("(display-mode: standalone)").matches;
+
+  if (isStandalone) {
+    console.log("PWA instalado - anúncios desativados");
+    return;
+  }
+
+  console.log("Navegador - ativando anúncios");
+
+  // 🔥 Tenta usar IntersectionObserver
+  if ("IntersectionObserver" in window) {
+    observeAds();
+  } else {
+    // 🔥 FALLBACK (navegadores antigos)
+    document.querySelectorAll(".adsbygoogle").forEach((ad) => {
+      try {
+        (adsbygoogle = window.adsbygoogle || []).push({});
+        ad.classList.add("ads-loaded");
+      } catch (e) {
+        console.warn("Fallback ads erro:", e);
+      }
+    });
+  }
+});
+
+// ===============================
+// LAZY LOAD DE ANÚNCIOS (PERFORMANCE)
+// ===============================
+const adObserver = new IntersectionObserver((entries) => {
+  entries.forEach((entry) => {
+    if (entry.isIntersecting) {
+      const ad = entry.target;
+
+      if (!ad.classList.contains("ads-loaded")) {
+        try {
+          (adsbygoogle = window.adsbygoogle || []).push({});
+          ad.classList.add("ads-loaded");
+        } catch (e) {}
+      }
+
+      adObserver.unobserve(ad);
+    }
+  });
+});
+
+function observeAds() {
+  document.querySelectorAll(".adsbygoogle").forEach((ad) => {
+    adObserver.observe(ad);
+  });
+}
+
+document.addEventListener("DOMContentLoaded", () => {
+  const openTips = document.getElementById("openTips");
+  const closeTips = document.getElementById("closeTips");
+  const tipsModal = document.getElementById("tipsModal");
+
+  if (!openTips || !closeTips || !tipsModal) {
+    console.warn("Modal de dicas não encontrado no DOM");
+    return;
+  }
+
+  // Abrir modal
+  openTips.addEventListener("click", () => {
+    if (!tipsContent.innerHTML.trim()) {
+      loadTipsContent();
+    }
+    tipsModal.classList.remove("hidden");
+
+    // 🔥 Garante que os anúncios apareçam
+    setTimeout(() => {
+      observeAds();
+    }, 300);
+  });
+
+  // Fechar pelo botão
+  closeTips.addEventListener("click", () => {
+    tipsModal.classList.add("hidden");
+  });
+
+  // Fechar clicando fora
+  tipsModal.addEventListener("click", (e) => {
+    if (e.target === tipsModal) {
+      tipsModal.classList.add("hidden");
+    }
+  });
+});

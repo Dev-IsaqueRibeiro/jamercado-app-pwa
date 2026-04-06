@@ -2,7 +2,7 @@ const CACHE_NAME = "jamercado-v2";
 const ASSETS = [
   "/",
   "/index.html",
-  "/CSS/style.css",
+  "/CSS/styles.css",
   "/JS/script.js",
   "/lib/firebase.js",
   "/IMAGES/Logo-JaMercado-mobile.png",
@@ -14,7 +14,13 @@ const ASSETS = [
 self.addEventListener("install", (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
-      return cache.addAll(ASSETS);
+      return Promise.all(
+        ASSETS.map((url) =>
+          cache.add(url).catch((err) => {
+            console.warn("Erro ao cachear:", url);
+          }),
+        ),
+      );
     }),
   );
 });
@@ -35,8 +41,14 @@ self.addEventListener("activate", (event) => {
 // Estratégia Fetch: Tenta rede, se falhar, usa o cache
 self.addEventListener("fetch", (event) => {
   event.respondWith(
-    fetch(event.request).catch(() => {
-      return caches.match(event.request);
-    }),
+    fetch(event.request)
+      .then((response) => {
+        return response;
+      })
+      .catch(() => {
+        return caches.match(event.request).then((cached) => {
+          return cached || caches.match("/index.html"); // 🔥 fallback SPA
+        });
+      }),
   );
 });
