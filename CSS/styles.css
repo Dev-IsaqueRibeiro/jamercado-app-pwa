@@ -23,6 +23,13 @@ body {
   overflow-x: hidden;
 }
 
+body,
+html {
+  overflow-x: hidden; /* Impede o scroll lateral em toda a aplicação */
+  width: 100%;
+  position: relative;
+}
+
 /* HEADER */
 header {
   position: sticky;
@@ -1572,22 +1579,24 @@ footer {
 
 /* ESTILIZAÇÃO DO BOTÃO → DICAS DE ECONOMIA */
 #tips-container {
-  position: fixed;
-  bottom: 75px;
-  right: 15px;
-  z-index: 999;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 100%;
+  margin: 40px 0;
+  clear: both;
 }
 
 .btn-tips {
   display: flex;
-  align-items: center; /* 🔥 CENTRALIZA VERTICAL */
+  align-items: center;
   justify-content: center;
-  position: relative; /* IMPORTANTE */
-  overflow: hidden; /* ESCONDE O BRILHO FORA DO BOTÃO */
+  position: relative;
+  overflow: hidden;
   color: #0f172a;
   background: white;
   border: none;
-  padding: 12px;
+  padding: 12px 25px;
   border-radius: 30px;
   font-size: 10px;
   font-weight: 900;
@@ -1636,6 +1645,7 @@ footer {
 
 .icon-right::before {
   content: attr(data-default);
+  margin-left: 5px;
 }
 
 .btn-tips:hover .icon-left::before {
