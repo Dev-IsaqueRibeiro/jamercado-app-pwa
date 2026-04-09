@@ -1040,7 +1040,8 @@ footer {
 .tech-container {
   position: relative;
   width: 100%;
-  margin-top: 5rem;
+  margin-top: 2.5rem;
+  margin-bottom: 2.5rem;
   overflow: hidden;
   background: transparent;
   min-height: 100px;
@@ -1300,77 +1301,131 @@ footer {
   box-sizing: border-box;
 }
 
-.card {
-  color: #0f172a;
-  background: #ffffffbf;
-  border-radius: 15px;
-  margin: 0px 0px 5px;
-  padding: 1.5em;
-  align-items: center;
+/* ESTILIZAÇÃO E ANIMAÇÃO DA DEVCLUB */
+.ad-affiliate-container-devclub {
+  display: flex;
   justify-content: center;
-  box-shadow: 2px 2px 15px #00000062;
-}
-
-.card-dev-club h4 {
-  margin-bottom: 1rem;
-}
-.card-dev-club h4,
-.devClub-text {
-  color: white;
-  text-shadow: 0 0 3px #000;
-}
-
-.devClub-text {
-  font-weight: 400;
-  letter-spacing: 0.5px;
-  margin-bottom: 1rem;
-}
-
-.devClub {
-  background: #ffffffaf;
-  padding: 0.5rem;
-  border-radius: 8px;
-  margin-bottom: 0.5rem;
-  box-shadow: inset 0 0 10px #420f69 !important;
-}
-
-/* Banner DevClub */
-.card-dev-club {
-  text-align: center;
-  background: linear-gradient(
-    45deg,
-    #39204dab,
-    #491d6bb2,
-    #5f1896cb
-  ) !important;
-  border-top: 4px solid #420f69 !important;
+  align-items: center;
+  border-radius: 20px;
+  background-color: #f9f9f9;
   box-shadow: 1px 1px 6px #6818a5 !important;
+  margin-bottom: 2rem;
+
   animation: swing-banner 2.5s ease-in-out infinite;
 }
-.card-dev-club p #icon-yt {
+
+.ad-card-devclub {
+  display: flex;
   align-items: center;
-  vertical-align: middle;
+  background: #fff;
+  border-radius: 20px;
+  text-decoration: none;
+  color: #0f172a !important;
+  max-width: 600px;
+  width: 100%;
+  transition: transform 0.2s;
+  overflow: hidden;
 }
 
-/* Botão DevClub  */
-.btn-3d-dev-club {
-  background: #fff !important;
-  color: #420f69 !important;
+.ad-card-devclub2 {
+  display: flex;
+  align-items: center;
+  background: #fff;
+  border-radius: 20px;
   text-decoration: none;
-  padding: 10px 20px;
-  border-radius: 8px;
-  display: inline-block;
-  font-weight: bold;
-  font-size: 0.8rem;
-  box-shadow: 0 4px 0 #420f69;
-  transition: all 0.2s;
-  margin-top: 10px;
-  animation: balancar 2.5s ease-in-out infinite;
-  cursor: pointer;
+  color: #0f172a !important;
+  max-width: 600px;
+  width: 100%;
+  transition: transform 0.2s;
+  overflow: hidden;
 }
-/* Coraçõezinhos (invisíveis por padrão) */
-.btn-3d-dev-club::before,
-.btn-3d-dev-club::after {
+
+.ad-card-devclub:hover {
+  transform: translateY(-3px);
+}
+
+.ad-image-devclub {
+  width: 120px;
+  height: 120px;
+  border-radius: 20px;
+  margin-left: 3%;
+  object-fit: cover;
+  box-shadow: 0 0 10px #420f69;
+}
+
+.ad-image-devclub2 {
+  width: 120px;
+  height: auto;
+  padding-left: 3%;
+  object-fit: cover;
+}
+
+.ad-content-devclub {
+  padding: 15px;
+  flex: 1;
+}
+
+.ad-title-devclub {
+  font-weight: bold;
+  text-align: center;
+  font-size: 1.1rem;
+  color: #420f69;
+  margin-bottom: 5px;
+}
+
+.ad-text-devclub {
+  text-align: center;
+  font-size: 0.9rem;
+  color: #0f172ace;
+}
+
+.ad-button-devclub {
+  background: white;
+  border: none;
+  border-radius: 8px;
+  padding: 8px 15px;
+  font-size: 18px;
+  font-weight: bold;
+  box-shadow:
+    inset 0 0 15px #6f31ad,
+    0 3px 7px #552585;
+  display: inline-block;
+  margin-top: 10px;
+  cursor: pointer;
+  transition: all 0.3s ease-in-out;
+  animation: balancar 2.5s ease-in-out infinite;
+}
+
+.ad-button-devclub2 {
+  background: white;
+  border: none;
+  border-radius: 8px;
+  padding: 8px 15px;
+  font-size: 18px;
+  margin-left: 10%;
+  margin-right: auto;
+  box-shadow:
+    inset 0 0 15px #6f31ad,
+    0 3px 7px #552585;
+  display: inline-block;
+  margin-top: 10px;
+  cursor: pointer;
+  transition: all 0.3s ease-in-out;
+  animation: balancar 2.5s ease-in-out infinite;
+}
+
+.ad-button-devclub #dev,
+.ad-button-devclub2 #dev {
+  color: #73cf0c;
+  margin-right: 1px;
+}
+.ad-button-devclub #club,
+.ad-button-devclub2 #club {
+  color: #6e30ad;
+}
+
+/* Animação dos Ícones do Botão (invisíveis por padrão) */
+.ad-button-devclub::before {
   content: "󠀾󠀾󠀾󠀾< 🖥️ 🧠 📱 >";
   position: absolute;
   font-size: 15px;
@@ -1380,37 +1435,24 @@ footer {
   transform: translateX(-50%);
 }
 
+.ad-button-devclub::after {
+  content: "󠀾󠀾󠀾󠀾< 📱 🖥️ 🧠  >";
+  position: absolute;
+  font-size: 15px;
+  opacity: 0;
+  top: 0;
+  right: 50%;
+  transform: translateX(50%);
+}
+
 /* Animação para lançar corações */
-.btn-3d-dev-club::before {
+.ad-button-devclub::before {
   animation: fly 2.3s infinite;
 }
 
-.btn-3d-dev-club::after {
+.ad-button-devclub::after {
   animation: fly 2.3s infinite;
   animation-delay: 0.7s; /* Segundo coração sai depois */
-}
-
-#card-dev-club img {
-  background: #fff;
-  font-size: 3rem;
-  height: 3rem;
-  padding: 2px;
-  margin-bottom: 5px;
-  border-radius: 8px;
-  box-shadow: 0 0 8px #6cd602;
-}
-
-.devClub strong {
-  font-size: 1.5em;
-  border-radius: 3px;
-  text-shadow: 1px 1px 4px #000;
-}
-
-#code {
-  color: #6818a5;
-}
-#dev {
-  color: #70e000;
 }
 
 /* --- ANIMAÇÕES EM LOOP DOS BOTÕES --- */
@@ -1420,16 +1462,16 @@ footer {
     transform: rotate(0deg);
   }
   10% {
-    transform: rotate(-10deg);
+    transform: rotate(-7deg);
   }
   20% {
-    transform: rotate(10deg);
+    transform: rotate(7deg);
   }
   30% {
-    transform: rotate(-10deg);
+    transform: rotate(-7deg);
   }
   40% {
-    transform: rotate(10deg);
+    transform: rotate(7deg);
   }
   50% {
     transform: rotate(0deg);
@@ -1447,13 +1489,13 @@ footer {
   50%,
   70%,
   90% {
-    transform: translateX(-5px);
+    transform: translateX(-3px);
   }
   20%,
   40%,
   60%,
   80% {
-    transform: translateX(5px);
+    transform: translateX(3px);
   }
 }
 
@@ -1500,12 +1542,23 @@ footer {
 @keyframes swing-banner {
   0%,
   100% {
-    transform: translateX(10px);
+    transform: translateX(5px);
   }
   50% {
-    transform: translateX(-10px);
+    transform: translateX(-5px);
   }
 }
+
+@keyframes swing-banner2 {
+  0%,
+  100% {
+    transform: translateX(-5px);
+  }
+  50% {
+    transform: translateX(5px);
+  }
+}
+/* FIM DA ESTILIZAÇÃO E ANIMAÇÃO DA DEVCLUB */
 
 #install-container {
   position: fixed;
@@ -1514,6 +1567,500 @@ footer {
   z-index: 9999;
   animation: float 3s ease-in-out infinite;
 }
+
+/* ESTILIZAÇÃO E ANIMAÇÃO DA MARMITA FITNESS 02 */
+.ad-affiliate-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  border-radius: 20px;
+  background-color: #f9f9f9;
+  box-shadow: 1px 1px 6px #e65c00;
+  animation: swing-banner2 2.5s ease-in-out infinite;
+}
+
+.ad-card {
+  display: flex;
+  align-items: center;
+  background: #fff;
+  border-radius: 20px;
+  text-decoration: none;
+  color: #0f172a !important;
+  max-width: 600px;
+  width: 100%;
+  transition: transform 0.2s;
+  overflow: hidden;
+}
+
+.ad-card:hover {
+  transform: translateY(-3px);
+}
+
+.ad-image {
+  width: 120px;
+  height: 120px;
+  border-radius: 20px;
+  margin-left: 3%;
+  object-fit: cover;
+  box-shadow: 0 0 10px #e65c00;
+}
+
+.ad-content {
+  padding: 15px;
+  flex: 1;
+}
+
+.ad-title {
+  font-weight: bold;
+  font-size: 1.1rem;
+  color: #085852;
+  margin-bottom: 5px;
+}
+
+.ad-text {
+  font-size: 0.9rem;
+  color: #0f172ace;
+}
+
+.ad-button {
+  color: #e65c00;
+  border: none;
+  border-radius: 8px;
+  padding: 8px 15px;
+  font-size: 18px;
+  font-weight: bold;
+  box-shadow:
+    inset 0 0 15px #e65c00,
+    0 3px 7px #a54200;
+  display: inline-block;
+  margin-top: 10px;
+  cursor: pointer;
+  transition: all 0.3s ease-in-out;
+  animation: balancar 2.5s ease-in-out infinite;
+}
+
+/* Animação dos Ícones do Botão (invisíveis por padrão) */
+.ad-button::before,
+.ad-button-MF2::before {
+  content: "󠀾󠀾󠀾󠀾. 🍛 🍱 🥗 .";
+  position: absolute;
+  font-size: 15px;
+  opacity: 0;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+.ad-button::after,
+.ad-button-MF2::after {
+  content: "󠀾󠀾󠀾󠀾. 🥗 🍛 🍱 .";
+  position: absolute;
+  font-size: 15px;
+  opacity: 0;
+  top: 0;
+  right: 50%;
+  transform: translateX(50%);
+}
+
+/* Animação para lançar corações */
+.ad-button::before,
+.ad-button-MF2::before {
+  animation: fly 2.3s infinite;
+}
+
+.ad-button::after,
+.ad-button-MF2::after {
+  animation: fly 2.3s infinite;
+  animation-delay: 0.7s; /* Segundo coração sai depois */
+}
+/* FIM DA ESTILIZAÇÃO E ANIMAÇÃO DA → MARMITA FITNESS 02 */
+
+/* ESTILIZAÇÃO E ANIMAÇÃO EBOOK VIVER NA ESPANHA */
+.ad-affiliate-container-ebookVNE {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin-bottom: 2rem;
+  border-radius: 20px;
+  background-color: #f9f9f9;
+  box-shadow: 1px 1px 6px #b60229;
+  animation: swing-banner 2.5s ease-in-out infinite;
+}
+
+.ad-card-ebookVNE {
+  display: flex;
+  align-items: center;
+  background: #fff;
+  border-radius: 20px;
+  text-decoration: none;
+  color: #0f172a !important;
+  max-width: 600px;
+  width: 100%;
+  transition: transform 0.2s;
+  overflow: hidden;
+}
+
+.ad-card-ebookVNE:hover {
+  transform: translateY(-3px);
+}
+
+.ad-image-ebookVNE {
+  width: 120px;
+  height: auto;
+  border-radius: 20px;
+  margin-left: 3%;
+  object-fit: cover;
+}
+
+.ad-content-ebookVNE {
+  padding: 15px;
+  flex: 1;
+}
+
+.ad-title-ebookVNE {
+  font-weight: bold;
+  font-size: 1.1rem;
+  color: #b60229;
+  margin-bottom: 5px;
+}
+
+.ad-text-ebookVNE {
+  font-size: 0.9rem;
+  color: #0f172ace;
+}
+
+.ad-button-ebookVNE {
+  color: #b60229;
+  border: none;
+  border-radius: 8px;
+  padding: 8px 15px;
+  font-size: 18px;
+  font-weight: bold;
+  box-shadow:
+    inset 0 0 15px #b60229,
+    0 0px 7px #7e011c;
+  display: inline-block;
+  margin-top: 10px;
+  cursor: pointer;
+  transition: all 0.3s ease-in-out;
+  animation: balancar 2.5s ease-in-out infinite;
+}
+
+/* Animação dos Ícones do Botão (invisíveis por padrão) */
+.ad-button-ebookVNE::before {
+  content: "󠀾󠀾󠀾󠀾. 🗺️  🛩️ 🧳 .";
+  position: absolute;
+  font-size: 15px;
+  opacity: 0;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+.ad-button-ebookVNE::after {
+  content: "󠀾󠀾󠀾󠀾. 🧳 🗺️ 🛩️ .";
+  position: absolute;
+  font-size: 15px;
+  opacity: 0;
+  top: 0;
+  right: 50%;
+  transform: translateX(50%);
+}
+
+/* Animação para lançar corações */
+.ad-button-ebookVNE::before {
+  animation: fly 2.3s infinite;
+}
+
+.ad-button-ebookVNE::after {
+  animation: fly 2.3s infinite;
+  animation-delay: 0.7s; /* Segundo coração sai depois */
+}
+/* FIM DA ESTILIZAÇÃO E ANIMAÇÃO EBOOK VIVER NA ESPANHA */
+
+/* ESTILIZAÇÃO E ANIMAÇÃO DA RESTAURAÇÃO CAPILAR */
+.ad-affiliate-container-RC {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  border-radius: 20px;
+  margin-top: 2.5rem;
+  background-color: #f9f9f9;
+  box-shadow: 1px 1px 6px #085852;
+  animation: swing-banner2 2.5s ease-in-out infinite;
+}
+
+.ad-card-RC {
+  display: flex;
+  align-items: center;
+  background: #ffffff;
+  border-radius: 20px;
+  text-decoration: none;
+  color: #0f172a !important;
+  max-width: 600px;
+  width: 100%;
+  transition: transform 0.2s;
+  overflow: hidden;
+}
+
+.ad-card-RC:hover {
+  transform: translateY(-3px);
+}
+
+.ad-image-RC {
+  width: 120px;
+  height: 120px;
+  border-radius: 20px;
+  margin-left: 3%;
+  object-fit: cover;
+  box-shadow: 0 0 10px #000;
+}
+
+.ad-content-RC {
+  padding: 15px;
+  flex: 1;
+}
+
+.ad-title-RC {
+  font-weight: bold;
+  font-size: 1.1rem;
+  color: #0f172a;
+  margin-bottom: 5px;
+}
+
+.ad-text-RC {
+  font-size: 0.9rem;
+  color: #0f172ace;
+}
+
+.ad-button-RC {
+  color: #000;
+  background: #fff;
+  border: none;
+  border-radius: 8px;
+  padding: 8px 15px;
+  font-size: 18px;
+  font-weight: bold;
+  box-shadow:
+    inset 0 0 15px #085852,
+    0 3px 7px #085852;
+  display: inline-block;
+  margin-top: 10px;
+  cursor: pointer;
+  transition: all 0.3s ease-in-out;
+  animation: balancar 2.5s ease-in-out infinite;
+}
+
+/* Animação dos Ícones do Botão (invisíveis por padrão) */
+.ad-button-RC::before {
+  content: "󠀾󠀾󠀾󠀾. 👩🏻 👨🏻‍🦱 💆🏻‍♀️ .";
+  position: absolute;
+  font-size: 15px;
+  opacity: 0;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+.ad-button-RC::after {
+  content: "󠀾󠀾󠀾󠀾. 👨🏻‍🦱 💆🏻‍♀️ 👩🏻 .";
+  position: absolute;
+  font-size: 15px;
+  opacity: 0;
+  top: 0;
+  right: 50%;
+  transform: translateX(50%);
+}
+
+/* Animação para lançar corações */
+.ad-button-RC::before {
+  animation: fly 2.3s infinite;
+}
+
+.ad-button-RC::after {
+  animation: fly 2.3s infinite;
+  animation-delay: 0.7s; /* Segundo coração sai depois */
+}
+/* FIM DA ESTILIZAÇÃO E ANIMAÇÃO DA → RESTAURAÇÃO CAPILAR */
+
+/* ESTILIZAÇÃO E ANIMAÇÃO 365 DIAS DE CONEXÃO COM DEUS */
+.ad-affiliate-container-365DCD {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  border-radius: 20px;
+  margin-top: 2.5rem;
+  background-color: #f9f9f9;
+  box-shadow: 1px 1px 6px #0f7dc1;
+  animation: swing-banner2 2.5s ease-in-out infinite;
+}
+
+.ad-card-365DCD {
+  display: flex;
+  align-items: center;
+  background: #ffffff;
+  border-radius: 20px;
+  text-decoration: none;
+  color: #0f172a !important;
+  max-width: 600px;
+  width: 100%;
+  transition: transform 0.2s;
+  overflow: hidden;
+}
+
+.ad-card-365DCD:hover {
+  transform: translateY(-3px);
+}
+
+.ad-image-365DCD {
+  width: 120px;
+  height: 120px;
+  border-radius: 20px;
+  margin-left: 3%;
+  object-fit: cover;
+  box-shadow: 0 0 10px #07588a;
+}
+
+.ad-content-365DCD {
+  padding: 15px;
+  flex: 1;
+}
+
+.ad-title-365DCD {
+  font-weight: bold;
+  font-size: 1.1rem;
+  color: #0d6da8;
+  margin-bottom: 5px;
+}
+
+.ad-text-365DCD {
+  font-size: 0.9rem;
+  color: #0f172ace;
+}
+
+.ad-button-365DCD {
+  color: #0d6da8;
+  background: #fff;
+  border: none;
+  border-radius: 8px;
+  padding: 8px 15px;
+  font-size: 18px;
+  font-weight: bold;
+  box-shadow:
+    inset 0 0 15px #0f7dc1,
+    0 3px 7px #07588a;
+  display: inline-block;
+  margin-top: 10px;
+  cursor: pointer;
+  transition: all 0.3s ease-in-out;
+  animation: balancar 2.5s ease-in-out infinite;
+}
+
+/* Animação dos Ícones do Botão (invisíveis por padrão) */
+.ad-button-365DCD::before {
+  content: "󠀾󠀾󠀾󠀾. 🕊️ ⛪ 🐑 .";
+  position: absolute;
+  font-size: 15px;
+  opacity: 0;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+.ad-button-365DCD::after {
+  content: "󠀾󠀾󠀾󠀾. 🐑 ⛪ 🕊️ .";
+  position: absolute;
+  font-size: 15px;
+  opacity: 0;
+  top: 0;
+  right: 50%;
+  transform: translateX(50%);
+}
+
+/* Animação para lançar corações */
+.ad-button-365DCD::before {
+  animation: fly 2.3s infinite;
+}
+
+.ad-button-365DCD::after {
+  animation: fly 2.3s infinite;
+  animation-delay: 0.7s; /* Segundo coração sai depois */
+}
+/* FIM DA → ESTILIZAÇÃO E ANIMAÇÃO 365 DIAS DE CONEXÃO COM DEUS */
+
+/* ESTILIZAÇÃO E ANIMAÇÃO DA MARMITA FIT CONGELADA */
+.ad-affiliate-container-MF2 {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  border-radius: 20px;
+  margin-top: 2rem;
+  margin-bottom: 1rem;
+  background-color: #f9f9f9;
+  box-shadow: 1px 1px 6px #085852;
+  animation: swing-banner2 2.5s ease-in-out infinite;
+}
+
+.ad-card-MF2 {
+  display: flex;
+  align-items: center;
+  background: #fffcec;
+  border-radius: 20px;
+  text-decoration: none;
+  color: #0f172a !important;
+  max-width: 600px;
+  width: 100%;
+  transition: transform 0.2s;
+  overflow: hidden;
+}
+
+.ad-card-MF2:hover {
+  transform: translateY(-3px);
+}
+
+.ad-image-MF2 {
+  width: 120px;
+  height: 120px;
+  border-radius: 20px;
+  margin-left: 3%;
+  object-fit: cover;
+  box-shadow: 0 0 10px #085852;
+}
+
+.ad-content-MF2 {
+  padding: 15px;
+  flex: 1;
+}
+
+.ad-title-MF2 {
+  font-weight: bold;
+  font-size: 1.1rem;
+  color: #0f766e;
+  margin-bottom: 5px;
+}
+
+.ad-text-MF2 {
+  font-size: 0.9rem;
+  color: #0f172ace;
+}
+
+.ad-button-MF2 {
+  color: #085852;
+  border: none;
+  border-radius: 8px;
+  padding: 8px 15px;
+  font-size: 18px;
+  font-weight: bold;
+  box-shadow:
+    inset 0 0 15px #085852,
+    0 3px 7px #064743;
+  display: inline-block;
+  margin-top: 10px;
+  cursor: pointer;
+  transition: all 0.3s ease-in-out;
+  animation: balancar 2.5s ease-in-out infinite;
+}
+/* FIM DA ESTILIZAÇÃO E ANIMAÇÃO DA → MARMITA FIT CONGELADA */
 
 /* ESTILIZAÇÃO DO BOTÃO DE DOWNLOAD */
 .btn-download-animado {
@@ -2052,6 +2599,42 @@ footer {
   .receipt-grid2 {
     grid-template-columns: 1fr 45px 5px 45px 90px;
     font-size: 12px;
+  }
+
+  .ad-card,
+  .ad-card-MF2,
+  .ad-card-RC,
+  .ad-card-365DCD,
+  .ad-card-ebookVNE {
+    flex-direction: column;
+    text-align: center;
+  }
+  .ad-image,
+  .ad-image-MF2,
+  .ad-image-365DCD {
+    width: 100%;
+    height: auto;
+    border-radius: 20px 20px 0 0;
+    margin: 0;
+  }
+
+  .ad-image-ebookVNE {
+    width: 80%;
+    height: auto;
+    border-radius: 20px 20px 0 0;
+    margin: 0;
+  }
+
+  .ad-image-devclub,
+  .ad-image-RC {
+    width: 100%;
+    height: auto;
+    padding: 0;
+    margin: 0;
+    border-radius: 20px 20px 0 0;
+  }
+  .ad-image-devclub2 {
+    border-radius: 0;
   }
 }
 /* FIM DA RESPONSIVIDADE → Telas até 430px */
